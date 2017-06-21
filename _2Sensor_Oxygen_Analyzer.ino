@@ -46,7 +46,7 @@ LiquidCrystal lcd(13, 12, 11, 10, 6, 5); //create LCD object, these pins are the
 Adafruit_ADS1115 ads1115;  //create ADC object
 
 //global variables 
-float o2Mv;
+
 float o2MvFactor[2];
 int sensor = 0;
 int buttonState;
@@ -173,6 +173,7 @@ void loop() {
 //calibrate
 void calibrate() {
   float calibrationPoint;
+  float o2Mv;
   lcd.clear();
   lcd.setCursor(4,0);
   lcd.print("Entering");
@@ -253,12 +254,12 @@ void calibrate() {
 //reads mv from oxygen sensor
 float getO2Mv(int sensor) {
   if (sensor == 0) {
-    o2Mv = ads1115.readADC_Differential_0_1() * 256.0 / 32767.0; //read from ADC and convert to mv
+    return ads1115.readADC_Differential_0_1() * 256.0 / 32767.0; //read from ADC and convert to mv
   }
   if (sensor == 1) {
-    o2Mv = ads1115.readADC_Differential_2_3() * 256.0 / 32767.0; //read from ADC and convert to mv
+    return ads1115.readADC_Differential_2_3() * 256.0 / 32767.0; //read from ADC and convert to mv
   }
-  return o2Mv;
+  return 0.0;
 }
 
 
