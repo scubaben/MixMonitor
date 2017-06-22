@@ -106,6 +106,7 @@ lcd.setCursor(3,0);
         lcd.print("Please");
         lcd.setCursor(0, 1);
         lcd.print("Recalibrate");
+        delay(2000);
         calibrate();
       }
     }
