@@ -359,7 +359,6 @@ void printFloat(float floatToPrint, int column, int row) {
 
 //the first of two ISRs to detect pulses from the quadrature encoder
 void aEncoderInterrupt() {
-  noInterrupts();
   aCurrentState = digitalRead(encoderPinA);
   bCurrentState = digitalRead(encoderPinB);
 
@@ -403,12 +402,10 @@ void aEncoderInterrupt() {
   }
   aPreviousState = aCurrentState;
   bPreviousState = bCurrentState;
-  interrupts();
 
 }
 
 void bEncoderInterrupt() {
-  noInterrupts();
   aCurrentState = digitalRead(encoderPinA);
   bCurrentState = digitalRead(encoderPinB);
   if (aPreviousState && bPreviousState) {
@@ -451,7 +448,6 @@ void bEncoderInterrupt() {
   }
   aPreviousState = aCurrentState;
   bPreviousState = bCurrentState;
-  interrupts();
 
 }
 
