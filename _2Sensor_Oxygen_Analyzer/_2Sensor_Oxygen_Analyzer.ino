@@ -26,15 +26,11 @@
   SOFTWARE.
 */
 
-
-//include necessary libraries
 #include <Wire.h> // wiring library
 #include "Adafruit_ADS1015.h" //16-bit ADC library, see here: https://github.com/adafruit/Adafruit_ADS1X15
 #include <LiquidCrystal.h> //LCD library
 #include <EEPROM.h> //eeprom library for saving calibration data
 
-
-//define  pins
 #define buttonPin A3
 #define encoderPinA 0
 #define encoderPinB 1
@@ -42,11 +38,9 @@
 #define outPin A4
 #define batteryPin A9
 
-//create objects
 LiquidCrystal lcd(13, 12, 11, 10, 6, 5); //create LCD object, these pins are the ones i chose to use on the adafruit feather 32u4 proto board
 Adafruit_ADS1115 ads1115;  //create ADC object
 
-//global variables
 float o2MvFactor[2];
 int buttonState;
 int lastButtonState = HIGH;
@@ -58,6 +52,7 @@ unsigned long debounceDelay = 50;
 int targetOx[2] = {209, 209}; //Floats don't do comparison well, so I'm using ints for oxygen % and the tolerance, and then dividing by 10 where necessary
 int targetTolerance = 15;
 int displayMode = 0;
+  boolean withinTolerance[2] = {true, true};
 
 //use volatie variables when they get changed by an ISR (interrupt service routine)
 volatile bool aCurrentState;
@@ -67,10 +62,9 @@ volatile bool bPreviousState;
 volatile int currentSetting;
 volatile int encoderTicks;
 
-byte separatorChar[8]  = {B1010, B100, B1010, B100, B1010, B100, B1010 //handy character designer: https://www.quinapalus.com/hd44780udg.html
+//handy character designer: https://www.quinapalus.com/hd44780udg.html
+byte separatorChar[8]  = {B1010, B100, B1010, B100, B1010, B100, B1010
                          };
-
-
 void setup() {
 
   //set pin modes, use pullup resistors on the input pins to help filter out noise
@@ -122,7 +116,7 @@ void setup() {
 
 void loop() {
   displayOxygen();
-
+  displayTarget();
   if (buttonDetect(buttonPin)) {
     optionsMenu();
   }
@@ -193,7 +187,6 @@ float getVoltage() {
 
 void displayOxygen() {
   float oxygen;
-  boolean withinTolerance[2] = {true, true};
   if ((millis() - lastSampleMillis) > sampleRate) {
     //loop through each sensor and calculate the o2 reading, but don't print if o2% is less than .9, to avoid displaying bad readings
     for (int sensor = 0; sensor < 2; sensor++) {
@@ -208,30 +201,35 @@ void displayOxygen() {
       }
       withinTolerance[sensor] = checkTolerance(oxygen, sensor);
     }
-    if (displayMode == 2) {
-      if (!withinTolerance[0] || !withinTolerance[1]) {
-        digitalWrite(ledPin, HIGH);
-        digitalWrite(outPin, HIGH);
-      }
-      else {
-        digitalWrite(ledPin, LOW);
-        digitalWrite(outPin, LOW);
-      }
-                lcd.setCursor(7, 0);
-          lcd.print("Tgt: ");
-          lcd.setCursor(7, 1);
-          lcd.print("Tgt: ");
-          for (int sensor = 0; sensor < 2; sensor ++){
-            printFloat((float) targetOx[sensor] / 10.0, 12, sensor);
-            
-          }
-    }
-
     lcd.setCursor(6, 0);
     lcd.write(byte(0));
     lcd.setCursor(6, 1);
     lcd.write(byte(0));
     lastSampleMillis = millis();
+  }
+
+  if (displayMode == 2) {
+    if (!withinTolerance[0] || !withinTolerance[1]) {
+      digitalWrite(ledPin, HIGH);
+      digitalWrite(outPin, HIGH);
+    }
+    else {
+      digitalWrite(ledPin, LOW);
+      digitalWrite(outPin, LOW);
+    }
+  }
+
+}
+
+void displayTarget() {
+  if (displayMode == 2) {
+    lcd.setCursor(7, 0);
+    lcd.print("Tgt: ");
+    lcd.setCursor(7, 1);
+    lcd.print("Tgt: ");
+    for (int sensor = 0; sensor < 2; sensor ++) {
+      printFloat((float) targetOx[sensor] / 10.0, 12, sensor);
+    }
   }
 }
 
@@ -256,6 +254,10 @@ void optionsMenu() {
   currentSetting = 0;
   int lastMenuSelection = currentSetting;
   boolean exitOptionsMenu = false;
+  lcd.setCursor(7, 0);
+  lcd.print("         ");
+  lcd.setCursor(7, 1);
+  lcd.print("         ");
 
   lcd.setCursor(8, 0);
   lcd.print("Options");
@@ -319,7 +321,7 @@ void optionsMenu() {
         lcd.setCursor(7, 1);
         lcd.print("Targets");
         if (buttonDetect(buttonPin)) {
-                    lcd.setCursor(7, 0);
+          lcd.setCursor(7, 0);
           lcd.print("         ");
           lcd.setCursor(7, 1);
           lcd.print("         ");
@@ -338,8 +340,6 @@ void optionsMenu() {
           exitOptionsMenu = true;
         }
         break;
-
-
     }
   }
 
