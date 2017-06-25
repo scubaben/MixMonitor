@@ -52,7 +52,7 @@ unsigned long debounceDelay = 50;
 int targetOx[2] = {209, 209}; //Floats don't do comparison well, so I'm using ints for oxygen % and the tolerance, and then dividing by 10 where necessary
 int targetTolerance = 15;
 int displayMode = 0;
-  boolean withinTolerance[2] = {true, true};
+boolean withinTolerance[2] = {true, true};
 
 //use volatie variables when they get changed by an ISR (interrupt service routine)
 volatile bool aCurrentState;
@@ -208,16 +208,7 @@ void displayOxygen() {
     lastSampleMillis = millis();
   }
 
-  if (displayMode == 2) {
-    if (!withinTolerance[0] || !withinTolerance[1]) {
-      digitalWrite(ledPin, HIGH);
-      digitalWrite(outPin, HIGH);
-    }
-    else {
-      digitalWrite(ledPin, LOW);
-      digitalWrite(outPin, LOW);
-    }
-  }
+
 
 }
 
@@ -229,6 +220,16 @@ void displayTarget() {
     lcd.print("Tgt: ");
     for (int sensor = 0; sensor < 2; sensor ++) {
       printFloat((float) targetOx[sensor] / 10.0, 12, sensor);
+    }
+  }
+  if (displayMode == 2) {
+    if (!withinTolerance[0] || !withinTolerance[1]) {
+      digitalWrite(ledPin, HIGH);
+      digitalWrite(outPin, HIGH);
+    }
+    else {
+      digitalWrite(ledPin, LOW);
+      digitalWrite(outPin, LOW);
     }
   }
 }
@@ -254,10 +255,7 @@ void optionsMenu() {
   currentSetting = 0;
   int lastMenuSelection = currentSetting;
   boolean exitOptionsMenu = false;
-  lcd.setCursor(7, 0);
-  lcd.print("         ");
-  lcd.setCursor(7, 1);
-  lcd.print("         ");
+  clearRightScreen();
 
   lcd.setCursor(8, 0);
   lcd.print("Options");
@@ -266,10 +264,7 @@ void optionsMenu() {
   while (((millis() - lastDisplayMillis) < 1750)) {
     displayOxygen();
   }
-  lcd.setCursor(8, 0);
-  lcd.print("       ");
-  lcd.setCursor(10, 1);
-  lcd.print("    ");
+  clearRightScreen();
   while (!exitOptionsMenu) {
     displayOxygen();
     if (currentSetting > 4) {
@@ -279,10 +274,7 @@ void optionsMenu() {
       currentSetting = 4;
     }
     if (currentSetting != lastMenuSelection) {
-      lcd.setCursor(7, 0);
-      lcd.print("         ");
-      lcd.setCursor(7, 1);
-      lcd.print("         ");
+      clearRightScreen();
       lastMenuSelection = currentSetting;
     }
 
@@ -302,6 +294,7 @@ void optionsMenu() {
         lcd.print("Target");
         if (buttonDetect(buttonPin)) {
           exitOptionsMenu = true;
+          clearRightScreen();
           setMixTarget();
         }
         break;
@@ -312,6 +305,7 @@ void optionsMenu() {
         lcd.print("Targets");
         if (buttonDetect(buttonPin)) {
           exitOptionsMenu = true;
+          clearRightScreen();
           setSensorTargets();
         }
         break;
@@ -321,11 +315,10 @@ void optionsMenu() {
         lcd.setCursor(7, 1);
         lcd.print("Targets");
         if (buttonDetect(buttonPin)) {
-          lcd.setCursor(7, 0);
-          lcd.print("         ");
-          lcd.setCursor(7, 1);
-          lcd.print("         ");
+          clearRightScreen();
           displayMode = 0;
+          digitalWrite(ledPin, LOW);
+          digitalWrite(outPin, LOW);
           exitOptionsMenu = true;
         }
         break;
@@ -333,10 +326,7 @@ void optionsMenu() {
         lcd.setCursor(7, 0);
         lcd.print("Exit");
         if (buttonDetect(buttonPin)) {
-          lcd.setCursor(7, 0);
-          lcd.print("         ");
-          lcd.setCursor(7, 1);
-          lcd.print("         ");
+          clearRightScreen();
           exitOptionsMenu = true;
         }
         break;
@@ -459,10 +449,8 @@ float setSensorTargets() {
       lcd.print("% O2");
     }
   }
+  clearRightScreen();
   lcd.setCursor(7, 0);
-  lcd.print("         ");
-  lcd.setCursor(7, 1);
-  lcd.print("         ");
 
   lcd.print("Tolerance");
   currentSetting = targetTolerance;
@@ -505,6 +493,12 @@ void printFloat(float floatToPrint, int column, int row) {
   }
 }
 
+void clearRightScreen() {
+  lcd.setCursor(7, 0);
+  lcd.print("         ");
+  lcd.setCursor(7, 1);
+  lcd.print("         ");
+}
 
 //the first of two ISRs to detect pulses from the quadrature encoder
 void aEncoderInterrupt() {
