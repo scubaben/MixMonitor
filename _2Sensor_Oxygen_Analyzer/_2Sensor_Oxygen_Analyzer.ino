@@ -230,6 +230,11 @@ void displayRight() {
         }
       }
     }
+    if (displayMode == 1) {
+      //add logic for displaying target vs actual mix, also need to decide how to handle scenarios where only one sensor is plugged in...
+      //may also want an option to display target O2 values...
+
+    }
     if (displayMode == 2) {
       lcd.setCursor(7, 0);
       lcd.print("Tgt: ");
@@ -370,7 +375,7 @@ void calibrate() {
   currentSetting = 209;
 
   //allow the user to pick their own calibration point
-  while (buttonDetect(buttonPin) == false) {
+  while (!buttonDetect(buttonPin)) {
     if (currentSetting > 1000) {
       currentSetting = 1000;
     }
@@ -439,14 +444,45 @@ void calibrate() {
 
 }
 
+//update this logic to include more validations, ie s1 can't be less than 21. also make it clearer which #s you are updating by flashing or something...
 void setMixTarget() {
   displayMode = 1;
-  //add code for setting mixes
+  lcd.setCursor(7, 0);
+  lcd.print("Tgt. Mix:");
+  currentSetting = 21; //when setting the target mix, we'll use whole percentages instead of tenths.
+  while (!buttonDetect(buttonPin)) {
+    displayOxygen();
+    if (currentSetting > 99) {
+      currentSetting = 99;
+    }
+    else if (currentSetting < 0) {
+      currentSetting = 0;
+    }
+    targetOx[1] = (currentSetting * 10); // have to multiply by 10, because everywhere else uses tenths. the desired oxygen content is used for  the S2 target
+    printInt(currentSetting, 7, 1);
+    lcd.print("/00");
+  }
+
+  currentSetting = 0;
+  while (!buttonDetect(buttonPin)) {
+
+    displayOxygen();
+    if (currentSetting + (targetOx[1] / 10) > 99) {
+      currentSetting = 100 - (targetOx[1] / 10);
+    }
+    else if (currentSetting < 0) {
+      currentSetting = 0;
+    }
+    targetOx[0] = ((float) targetOx[1] / 10.0) / (100.0 - (float)currentSetting) *1000 ;// the formula is: s1 = s2/1-he
+    printInt(currentSetting, 10, 1);
+  }
+    clearRightScreen();
 }
 
 
-float setSensorTargets() {
 
+
+float setSensorTargets() {
   for (int sensor = 0; sensor < 2; sensor++) {
     lcd.setCursor(7, 0);
     lcd.print("S");
@@ -454,7 +490,7 @@ float setSensorTargets() {
     lcd.print(" Target");
     currentSetting = targetOx[sensor];
 
-    while (buttonDetect(buttonPin) == false) {
+    while (!buttonDetect(buttonPin)) {
       displayOxygen();
       if (currentSetting > 1000) {
         currentSetting = 1000;
@@ -472,7 +508,7 @@ float setSensorTargets() {
 
   lcd.print("Tolerance");
   currentSetting = targetTolerance;
-  while (buttonDetect(buttonPin) == false) {
+  while (!buttonDetect(buttonPin)) {
     displayOxygen();
     if (currentSetting > 1000) {
       currentSetting = 1000;
@@ -507,6 +543,20 @@ void printFloat(float floatToPrint, int column, int row) {
   }
   else {
     lcd.print(" ");
+    lcd.print(formattedValue);
+  }
+}
+
+//prints ints in a nicely formatted way so they don't jump around on the LCD screen
+void printInt(int intToPrint, int column, int row) {
+  String formattedValue = String(intToPrint, DEC);
+  lcd.setCursor(column, row);
+
+  if (formattedValue.length() == 2) {
+    lcd.print(formattedValue);
+  }
+  else {
+    lcd.print("0");
     lcd.print(formattedValue);
   }
 }
