@@ -53,6 +53,8 @@ int targetOx[2] = {209, 209}; //Floats don't do comparison well, so I'm using in
 int targetTolerance = 15;
 int displayMode = 0;
 boolean withinTolerance[2] = {true, true};
+boolean updateRightDisplay = false;
+
 
 //use volatie variables when they get changed by an ISR (interrupt service routine)
 volatile bool aCurrentState;
@@ -116,7 +118,7 @@ void setup() {
 
 void loop() {
   displayOxygen();
-  displayTarget();
+  displayRight();
   if (buttonDetect(buttonPin)) {
     optionsMenu();
   }
@@ -206,32 +208,47 @@ void displayOxygen() {
     lcd.setCursor(6, 1);
     lcd.write(byte(0));
     lastSampleMillis = millis();
+    updateRightDisplay = true;
+
   }
 
 
 
 }
 
-void displayTarget() {
-  if (displayMode == 2) {
-    lcd.setCursor(7, 0);
-    lcd.print("Tgt: ");
-    lcd.setCursor(7, 1);
-    lcd.print("Tgt: ");
-    for (int sensor = 0; sensor < 2; sensor ++) {
-      printFloat((float) targetOx[sensor] / 10.0, 12, sensor);
+void displayRight() {
+  if (updateRightDisplay) {
+    if (displayMode == 0) {
+      for (int sensor = 0; sensor < 2; sensor++) {
+        if (o2MvFactor[sensor] == 0.0) {
+          lcd.setCursor(7, sensor);
+          lcd.print("         ");
+        }
+        else {
+          printFloat(getO2Mv(sensor), 9, sensor);
+          lcd.print(" mV");
+        }
+      }
+    }
+    if (displayMode == 2) {
+      lcd.setCursor(7, 0);
+      lcd.print("Tgt: ");
+      lcd.setCursor(7, 1);
+      lcd.print("Tgt: ");
+      for (int sensor = 0; sensor < 2; sensor ++) {
+        printFloat((float) targetOx[sensor] / 10.0, 12, sensor);
+      }
+      if (!withinTolerance[0] || !withinTolerance[1]) {
+        digitalWrite(ledPin, HIGH);
+        digitalWrite(outPin, HIGH);
+      }
+      else {
+        digitalWrite(ledPin, LOW);
+        digitalWrite(outPin, LOW);
+      }
     }
   }
-  if (displayMode == 2) {
-    if (!withinTolerance[0] || !withinTolerance[1]) {
-      digitalWrite(ledPin, HIGH);
-      digitalWrite(outPin, HIGH);
-    }
-    else {
-      digitalWrite(ledPin, LOW);
-      digitalWrite(outPin, LOW);
-    }
-  }
+  updateRightDisplay = false;
 }
 
 
@@ -261,10 +278,11 @@ void optionsMenu() {
   lcd.print("Options");
   lcd.setCursor(10, 1);
   lcd.print("Menu");
-  while (((millis() - lastDisplayMillis) < 1750)) {
+  while (((millis() - lastDisplayMillis) < 1750 && currentSetting == 0)) {
     displayOxygen();
   }
   clearRightScreen();
+  currentSetting = 0;
   while (!exitOptionsMenu) {
     displayOxygen();
     if (currentSetting > 4) {
@@ -380,7 +398,7 @@ void calibrate() {
       else {
         printFloat(o2Mv, 3, sensor);
       }
-      lcd.print("mv");
+      lcd.print("mV");
     }
 
   } while (!buttonDetect(buttonPin));
