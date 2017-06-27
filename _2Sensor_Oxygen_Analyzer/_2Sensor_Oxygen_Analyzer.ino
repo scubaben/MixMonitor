@@ -54,6 +54,7 @@ int targetTolerance = 15;
 int displayMode = 0;
 boolean withinTolerance[2] = {true, true};
 boolean updateRightDisplay = false;
+int targetHe = 0;
 
 
 //use volatie variables when they get changed by an ISR (interrupt service routine)
@@ -231,8 +232,18 @@ void displayRight() {
       }
     }
     if (displayMode == 1) {
-      //add logic for displaying target vs actual mix, also need to decide how to handle scenarios where only one sensor is plugged in...
-      //may also want an option to display target O2 values...
+      //kinda works, definitely needs cleanup and error handling for when only one sensor is connected.
+      int oxygenInMix = (int)((getO2Mv(1) * o2MvFactor[1])+ 0.5);
+      lcd.setCursor(7,0);
+      lcd.print("Tgt:");
+      printInt((targetOx[1]/10),11,0);
+      lcd.print("/");
+      printInt((targetHe),14,0);
+            lcd.setCursor(7,1);
+      lcd.print("Act:");
+      printInt(oxygenInMix,11,1);
+      lcd.print("/");
+      printInt((int)(((((getO2Mv(0) * o2MvFactor[0])-(float)oxygenInMix)/(getO2Mv(0) * o2MvFactor[0]))*100.0)+.5),14,1);
 
     }
     if (displayMode == 2) {
@@ -474,6 +485,7 @@ void setMixTarget() {
       currentSetting = 0;
     }
     targetOx[0] = ((float) targetOx[1] / 10.0) / (100.0 - (float)currentSetting) *1000 ;// the formula is: s1 = s2/1-he
+    targetHe = currentSetting;
     printInt(currentSetting, 10, 1);
   }
     clearRightScreen();
