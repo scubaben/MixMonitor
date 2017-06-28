@@ -66,8 +66,10 @@ volatile int currentSetting;
 volatile int encoderTicks;
 
 //handy character designer: https://www.quinapalus.com/hd44780udg.html
-byte separatorChar[8]  = {B1010, B100, B1010, B100, B1010, B100, B1010
-                         };
+byte thickSeparator[8]  = {B1010, B100, B1010, B100, B1010, B100, B1010};
+byte thinSeparator[8] = {B100, B0, B100, B0, B100, B0, B100};
+byte targetSymbol[8] = {B0, B1000, B1100, B1110, B1100, B1000, B0};
+
 void setup() {
 
   //set pin modes, use pullup resistors on the input pins to help filter out noise
@@ -82,7 +84,9 @@ void setup() {
 
 
   lcd.begin(16, 2); //configure columns and rows for 16x2 lcd
-  lcd.createChar(0, separatorChar);
+  lcd.createChar(0, thickSeparator);
+  lcd.createChar(1, thinSeparator);
+  lcd.createChar(2, targetSymbol);
   ads1115.begin();  //start ADC object
   ads1115.setGain(GAIN_SIXTEEN); //set gain on ADC to +/-.256v to get the best resolution on the o2 millivolts
 
@@ -226,33 +230,36 @@ void displayRight() {
           lcd.print("         ");
         }
         else {
-          printFloat(getO2Mv(sensor), 9, sensor);
+          lcd.setCursor(7, sensor);
+          lcd.write(byte(2));
+          printFloat(getO2Mv(sensor), 8, sensor);
           lcd.print(" mV");
         }
       }
     }
     if (displayMode == 1) {
-      //kinda works, definitely needs cleanup and error handling for when only one sensor is connected.
-      int oxygenInMix = (int)((getO2Mv(1) * o2MvFactor[1])+ 0.5);
-      lcd.setCursor(7,0);
-      lcd.print("Tgt:");
-      printInt((targetOx[1]/10),11,0);
+      //needs error handling for when only 1 sensor is connected, and tolerance checking.
+      int oxygenInMix = (int)((getO2Mv(1) * o2MvFactor[1]) + 0.5);
+      lcd.setCursor(7, 0);
+      lcd.write(byte(2));
+      printInt((targetOx[0] / 10), 8, 0);
+      lcd.setCursor(12, 0);
+      lcd.print("Mix");
+      lcd.setCursor(7, 1);
+      lcd.write(byte(2));
+      printInt((targetOx[1] / 10), 8, 1);
+      printInt(oxygenInMix, 11, 1);
       lcd.print("/");
-      printInt((targetHe),14,0);
-            lcd.setCursor(7,1);
-      lcd.print("Act:");
-      printInt(oxygenInMix,11,1);
-      lcd.print("/");
-      printInt((int)(((((getO2Mv(0) * o2MvFactor[0])-(float)oxygenInMix)/(getO2Mv(0) * o2MvFactor[0]))*100.0)+.5),14,1);
+      printInt((int)(((((getO2Mv(0) * o2MvFactor[0]) - (float)oxygenInMix) / (getO2Mv(0) * o2MvFactor[0])) * 100.0) + .5), 14, 1);
 
     }
     if (displayMode == 2) {
       lcd.setCursor(7, 0);
-      lcd.print("Tgt: ");
+      lcd.write(byte(2));
       lcd.setCursor(7, 1);
-      lcd.print("Tgt: ");
+      lcd.write(byte(2));
       for (int sensor = 0; sensor < 2; sensor ++) {
-        printFloat((float) targetOx[sensor] / 10.0, 12, sensor);
+        printFloat((float) targetOx[sensor] / 10.0, 8, sensor);
       }
       if (!withinTolerance[0] || !withinTolerance[1]) {
         digitalWrite(ledPin, HIGH);
@@ -484,11 +491,11 @@ void setMixTarget() {
     else if (currentSetting < 0) {
       currentSetting = 0;
     }
-    targetOx[0] = ((float) targetOx[1] / 10.0) / (100.0 - (float)currentSetting) *1000 ;// the formula is: s1 = s2/1-he
+    targetOx[0] = ((float) targetOx[1] / 10.0) / (100.0 - (float)currentSetting) * 1000 ; // the formula is: s1 = s2/1-he
     targetHe = currentSetting;
     printInt(currentSetting, 10, 1);
   }
-    clearRightScreen();
+  clearRightScreen();
 }
 
 
