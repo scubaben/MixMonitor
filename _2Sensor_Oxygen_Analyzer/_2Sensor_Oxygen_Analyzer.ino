@@ -41,7 +41,6 @@
 LiquidCrystal lcd(13, 12, 11, 10, 6, 5); //create LCD object, these pins are the ones i chose to use on the adafruit feather 32u4 proto board
 Adafruit_ADS1115 ads1115;  //create ADC object
 
-
 int buttonState;
 int lastButtonState = HIGH;
 unsigned long lastSampleMillis = millis();
@@ -55,7 +54,6 @@ int displayMode = 0;
 boolean withinTolerance[2] = {true, true};
 boolean updateRightDisplay = false;
 int targetHe = 0;
-
 
 //use volatie variables when they get changed by an ISR (interrupt service routine)
 volatile bool aCurrentState;
