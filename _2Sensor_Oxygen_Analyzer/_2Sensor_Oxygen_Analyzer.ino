@@ -52,10 +52,7 @@ int targetTolerance = 15;
 int displayMode = 0;
 boolean updateRightDisplay = false;
 int targetHe = 0;
-<<<<<<< HEAD
 int inferredHe = 0;
-=======
->>>>>>> fe6395889e2b2411b9f16d212bf728f94a9e10a7
 
 //use volatie variables when they get changed by an ISR (interrupt service routine)
 volatile bool aCurrentState;
@@ -261,93 +258,98 @@ void displayOxygen() {
 }
 
 void displayRight() {
-  if (updateRightDisplay) {
-    if (displayMode == 0) {
-      if (!sensor1.isActive()  || sensor1.mv() <= 0.0) {
-        lcd.setCursor(7, 0);
-        lcd.print("         ");
-      }
-      else {
-        lcd.setCursor(7, 0);
-        lcd.write(byte(2));
-        printFloat(sensor1.mv(), 8, 0);
-        lcd.print(" mV");
-      }
-      if (!sensor2.isActive() || sensor2.mv() <= 0.0) {
-        lcd.setCursor(7, 1);
-        lcd.print("         ");
-      }
-      else {
-        lcd.setCursor(7, 1);
-        lcd.write(byte(2));
-        printFloat(sensor2.mv(), 8, 1);
-        lcd.print(" mV");
-      }
-    }
-    if (displayMode == 1) {
-		while (!sensor2.isActive()) {
-			lcd.setCursor(8, 0);
-			lcd.print("S2 ERROR");
+	if (updateRightDisplay) {
+		if (displayMode == 0) {
+			if (!sensor1.isActive() || sensor1.mv() <= 0.0) {
+				lcd.setCursor(7, 0);
+				lcd.print("         ");
+			}
+			else {
+				lcd.setCursor(7, 0);
+				lcd.write(byte(2));
+				printFloat(sensor1.mv(), 8, 0);
+				lcd.print(" mV");
+			}
+			if (!sensor2.isActive() || sensor2.mv() <= 0.0) {
+				lcd.setCursor(7, 1);
+				lcd.print("         ");
+			}
+			else {
+				lcd.setCursor(7, 1);
+				lcd.write(byte(2));
+				printFloat(sensor2.mv(), 8, 1);
+				lcd.print(" mV");
+			}
+		}
+		if (displayMode == 1) {
+			while (!sensor2.isActive()) {
+				lcd.setCursor(8, 0);
+				lcd.print("S2 ERROR");
+				lcd.setCursor(7, 1);
+				lcd.print("         ");
+				displayOxygen();
+			}
+
+			//needs tolerance checking.
+			lcd.setCursor(7, 0);
+			if (sensor1.isActive()) {
+				lcd.write(byte(2));
+				printInt((sensor1.getTarget() / 10), 8, 0);
+			}
+			else {
+				lcd.print("   ");
+			}
+
+			lcd.setCursor(10, 0);
+			lcd.print("  Mix ");
 			lcd.setCursor(7, 1);
-			lcd.print("         ");
-			displayOxygen();
+			if (sensor2.isActive()) {
+				lcd.write(byte(2));
+				printInt((sensor2.getTarget() / 10), 8, 1);
+			}
+			else {
+				lcd.print("   ");
+			}
+
+			printInt((int)(sensor2.oxygenContent() + 0.5), 11, 1);
+			lcd.print("/");
+			if (sensor1.isActive()) {
+				inferredHe = (int)((((sensor1.oxygenContent() - sensor2.oxygenContent()) / sensor1.oxygenContent()) * 100.0) + .5);
+			}
+			else {
+				inferredHe = (int)((((20.9 - sensor2.oxygenContent()) / 20.9) * 100.0) + .5);
+			}
+			printInt(inferredHe, 14, 1);
 		}
 
-      //needs tolerance checking.
-      lcd.setCursor(7, 0);
-      if (sensor1.isActive()) {
-        lcd.write(byte(2));
-        printInt((sensor1.getTarget() / 10), 8, 0);
-      }
-      else {
-        lcd.print("   ");
-      }
-
-      lcd.setCursor(10, 0);
-      lcd.print("  Mix ");
-      lcd.setCursor(7, 1);
-      if (sensor2.isActive()) {
-        lcd.write(byte(2));
-        printInt((sensor2.getTarget() / 10), 8, 1);
-      }
-      else {
-        lcd.print("   ");
-      }
-
-      printInt((int)(sensor2.oxygenContent() + 0.5), 11, 1);
-      lcd.print("/");
-	  if (sensor1.isActive()) {
-		  inferredHe = (int)((((sensor1.oxygenContent() - sensor2.oxygenContent()) / sensor1.oxygenContent()) * 100.0) + .5);
-	  }
-	  else {
-		  inferredHe = (int)((((20.9 - sensor2.oxygenContent()) / 20.9) * 100.0) + .5);
-	  }
-	  printInt(inferredHe, 14, 1);
-    }
-
-    if (displayMode == 2) {
-      lcd.setCursor(7, 0);
-      lcd.write(byte(2));
-      lcd.setCursor(7, 1);
-      lcd.write(byte(2));
-      if (sensor1.isActive()) {
-        printFloat((float)sensor1.getTarget() / 10.0, 8, 0);
-      }
-      if (sensor2.isActive()) {
-        printFloat((float)sensor2.getTarget() / 10.0, 8, 1);
-      }
-
-      if (!sensor1.isInTolerance() || !sensor2.isInTolerance()) {
-        digitalWrite(ledPin, HIGH);
-        digitalWrite(outPin, HIGH);
-      }
-      else {
-        digitalWrite(ledPin, LOW);
-        digitalWrite(outPin, LOW);
-      }
-    }
-  }
-  updateRightDisplay = false;
+		if (displayMode == 2) {
+			lcd.setCursor(7, 0);
+			if (sensor1.isActive()) {
+				lcd.write(byte(2));
+				printFloat((float)sensor1.getTarget() / 10.0, 8, 0);
+			}
+			else {
+				lcd.print("         ");
+			}
+			lcd.setCursor(7, 1);
+			if (sensor2.isActive()) {
+				lcd.write(byte(2));
+				printFloat((float)sensor2.getTarget() / 10.0, 8, 1);
+			}
+			else {
+				lcd.print("         ");
+			}
+			if (!sensor1.isInTolerance() || !sensor2.isInTolerance()) {
+				digitalWrite(ledPin, HIGH);
+				digitalWrite(outPin, HIGH);
+			}
+			else {
+				digitalWrite(ledPin, LOW);
+				digitalWrite(outPin, LOW);
+			}
+		}
+		updateRightDisplay = false;
+	}
 }
 
 void optionsMenu() {
