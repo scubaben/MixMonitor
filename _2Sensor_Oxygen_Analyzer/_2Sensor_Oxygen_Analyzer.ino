@@ -41,7 +41,7 @@
 LiquidCrystal lcd(13, 12, 11, 10, 6, 5); //create LCD object, these pins are the ones i chose to use on the adafruit feather 32u4 proto board
 Adafruit_ADS1115 ads1115;  //create ADC object
 
-float o2MvFactor[2];
+
 int buttonState;
 int lastButtonState = HIGH;
 unsigned long lastSampleMillis = millis();
@@ -70,7 +70,82 @@ byte thickSeparator[8]  = {B1010, B100, B1010, B100, B1010, B100, B1010};
 byte thinSeparator[8] = {B100, B0, B100, B0, B100, B0, B100};
 byte targetSymbol[8] = {B0, B1000, B1100, B1110, B1100, B1000, B0};
 
+class Sensor {
+    int sensorIndex;
+    int target = 209;
+  public:
+    Sensor(int sensorNumber) {
+      sensorIndex = sensorNumber;
+
+    }
+    boolean isConnected() {
+      if (this->mv() > 0.0) {
+        return true;
+      }
+      return false;
+
+    }
+    boolean isCalibrated() {
+      if (this->factor() > 0.0) {
+        return true;
+      }
+      return false;
+    }
+
+    boolean isInTolerance() {
+      if (this->isCalibrated() && this->isConnected()) {
+        if ((this->oxygenContent() > (float) this->target / 10.0 + (float)targetTolerance / 10.0) || (this->oxygenContent() < (float) this->target / 10.0 - (float)targetTolerance / 10.0)) {
+          return false;
+        }
+        return true;
+      }
+      return true;
+    }
+
+    float factor() {
+      int eeAddress = sensorIndex * sizeof(float);
+      float savedFactor;
+      EEPROM.get(eeAddress, savedFactor);
+      if (savedFactor > 1.615 && savedFactor < 2.625) {
+        return savedFactor;
+      }
+      return 0.0;
+
+    }
+
+    float mv() {
+      if (sensorIndex == 0) {
+        return ads1115.readADC_Differential_0_1() * 256.0 / 32767.0; //read from ADC and convert to mv
+      }
+      if (sensorIndex == 1) {
+        return ads1115.readADC_Differential_2_3() * 256.0 / 32767.0; //read from ADC and convert to mv
+      }
+      return -1.0;
+    }
+
+    float oxygenContent() {
+      if (this->isCalibrated() && this->isConnected() && this->mv() > 0.0) {
+        return  this->mv() * this->factor();
+      }
+      return -1.0;
+    }
+    void saveCalibration(float calData) {
+      int eeAddress = sensorIndex * sizeof(float);
+      EEPROM.put(eeAddress, calData);
+
+    }
+    void setTarget(int target) {
+      this->target = target;
+    }
+    int getTarget() {
+      return this->target;
+    }
+};
+
+Sensor sensor1(0);
+Sensor sensor2(1);
 void setup() {
+
 
   //set pin modes, use pullup resistors on the input pins to help filter out noise
   pinMode(buttonPin, INPUT_PULLUP);
@@ -97,26 +172,22 @@ void setup() {
   lcd.print(getVoltage());
   lcd.print("v");
   lcd.setCursor(11, 1);
-  lcd.print("v 0.1");
+  lcd.print("v 0.2");
   delay(2000);
+  lcd.clear();
 
 
   //if the calibration button is down, run the calibrate routine, otherwise validate the calibration data
   if (digitalRead(buttonPin) == LOW) {
     calibrate();
   }
-  else {
-    for (int sensor = 0; sensor < 2; sensor++) {
-      o2MvFactor[sensor] = getO2CalData(sensor);
-      if (validateCalData(o2MvFactor[sensor])) {
-        lcd.clear();
-        lcd.print("Please");
-        lcd.setCursor(0, 1);
-        lcd.print("Recalibrate");
-        delay(2000);
-        calibrate();
-      }
-    }
+  else if ((sensor1.isConnected() && !sensor1.isCalibrated()) || (sensor2.isConnected() && !sensor2.isCalibrated())) {
+    lcd.clear();
+    lcd.print("Please");
+    lcd.setCursor(0, 1);
+    lcd.print("Recalibrate");
+    delay(2000);
+    calibrate();
   }
   lcd.clear();
 }
@@ -130,43 +201,6 @@ void loop() {
 }
 
 
-
-
-//reads mv from oxygen sensor
-float getO2Mv(int sensor) {
-  if (sensor == 0) {
-    return ads1115.readADC_Differential_0_1() * 256.0 / 32767.0; //read from ADC and convert to mv
-  }
-  if (sensor == 1) {
-    return ads1115.readADC_Differential_2_3() * 256.0 / 32767.0; //read from ADC and convert to mv
-  }
-  return 0.0;
-}
-
-
-//saves calibration data to EEPROM
-void setCalData(int sensor, float savedFactor) {
-  int eeAddress = sensor * sizeof(float);
-  EEPROM.put(eeAddress, savedFactor);
-}
-
-//reads O2 calibration data from EEPROM
-float getO2CalData(int sensor) {
-  int eeAddress = sensor * sizeof(float);
-  float savedFactor;
-  EEPROM.get(eeAddress, savedFactor);
-  return savedFactor;
-}
-
-//validates o2Mv calibration to ensure they are within logical limits
-int validateCalData(float validateFactor) {
-  if ((validateFactor > 1.615 && validateFactor < 2.625) || validateFactor == 0.0) {
-    return 0;
-  }
-  else {
-    return 1;
-  }
-}
 
 //uses edge detection and debouncing to detect button pushes
 boolean buttonDetect(int detectPin) {
@@ -193,20 +227,23 @@ float getVoltage() {
 }
 
 void displayOxygen() {
-  float oxygen;
   if ((millis() - lastSampleMillis) > sampleRate) {
     //loop through each sensor and calculate the o2 reading, but don't print if o2% is less than .9, to avoid displaying bad readings
-    for (int sensor = 0; sensor < 2; sensor++) {
-      oxygen = (getO2Mv(sensor) * o2MvFactor[sensor]);
-      if (o2MvFactor[sensor] == 0.0 || oxygen < 0.9) {
-        lcd.setCursor(0, sensor);
-        lcd.print("     ");
-      }
-      else {
-        printFloat(oxygen, 0, sensor);
-        lcd.print("%");
-      }
-      withinTolerance[sensor] = checkTolerance(oxygen, sensor);
+    if (sensor1.oxygenContent() >= 0.0) {
+      printFloat(sensor1.oxygenContent(), 0, 0);
+      lcd.print("%");
+    }
+    else {
+      lcd.setCursor(0, 0);
+      lcd.print("     ");
+    }
+    if (sensor2.oxygenContent() >= 0.0) {
+      printFloat(sensor2.oxygenContent(), 0, 1);
+      lcd.print("%");
+    }
+    else {
+      lcd.setCursor(0, 1);
+      lcd.print("     ");
     }
     lcd.setCursor(6, 0);
     lcd.write(byte(0));
@@ -214,32 +251,36 @@ void displayOxygen() {
     lcd.write(byte(0));
     lastSampleMillis = millis();
     updateRightDisplay = true;
-
   }
-
-
-
 }
 
 void displayRight() {
   if (updateRightDisplay) {
     if (displayMode == 0) {
-      for (int sensor = 0; sensor < 2; sensor++) {
-        if (o2MvFactor[sensor] == 0.0) {
-          lcd.setCursor(7, sensor);
-          lcd.print("         ");
-        }
-        else {
-          lcd.setCursor(7, sensor);
-          lcd.write(byte(2));
-          printFloat(getO2Mv(sensor), 8, sensor);
-          lcd.print(" mV");
-        }
+      if (!sensor1.isConnected() || !sensor1.isCalibrated()  || sensor1.mv() <= 0.0) {
+        lcd.setCursor(7, 0);
+        lcd.print("         ");
+      }
+      else {
+        lcd.setCursor(7, 0);
+        lcd.write(byte(2));
+        printFloat(sensor1.mv(), 8, 0);
+        lcd.print(" mV");
+      }
+      if (!sensor2.isConnected() || !sensor2.isCalibrated() || sensor2.mv() <= 0.0) {
+        lcd.setCursor(7, 1);
+        lcd.print("         ");
+      }
+      else {
+        lcd.setCursor(7, 1);
+        lcd.write(byte(2));
+        printFloat(sensor2.mv(), 8, 1);
+        lcd.print(" mV");
       }
     }
     if (displayMode == 1) {
       //needs error handling for when only 1 sensor is connected, and tolerance checking.
-      int oxygenInMix = (int)((getO2Mv(1) * o2MvFactor[1]) + 0.5);
+      int oxygenInMix = ((int)(sensor2.oxygenContent() + 0.5));
       lcd.setCursor(7, 0);
       lcd.write(byte(2));
       printInt((targetOx[0] / 10), 8, 0);
@@ -250,7 +291,7 @@ void displayRight() {
       printInt((targetOx[1] / 10), 8, 1);
       printInt(oxygenInMix, 11, 1);
       lcd.print("/");
-      printInt((int)(((((getO2Mv(0) * o2MvFactor[0]) - (float)oxygenInMix) / (getO2Mv(0) * o2MvFactor[0])) * 100.0) + .5), 14, 1);
+      printInt((int)(((sensor1.oxygenContent() - sensor2.oxygenContent() / sensor1.oxygenContent()) * 100.0) + .5), 14, 1);
 
     }
     if (displayMode == 2) {
@@ -258,10 +299,14 @@ void displayRight() {
       lcd.write(byte(2));
       lcd.setCursor(7, 1);
       lcd.write(byte(2));
-      for (int sensor = 0; sensor < 2; sensor ++) {
-        printFloat((float) targetOx[sensor] / 10.0, 8, sensor);
+      if (sensor1.isConnected() && sensor1.isCalibrated()) {
+        printFloat((float)sensor1.getTarget() / 10.0, 8, 0);
       }
-      if (!withinTolerance[0] || !withinTolerance[1]) {
+      if (sensor2.isConnected() && sensor2.isCalibrated()) {
+        printFloat((float)sensor2.getTarget() / 10.0, 8, 1);
+      }
+
+      if (!sensor1.isInTolerance() || !sensor2.isInTolerance()) {
         digitalWrite(ledPin, HIGH);
         digitalWrite(outPin, HIGH);
       }
@@ -272,22 +317,6 @@ void displayRight() {
     }
   }
   updateRightDisplay = false;
-}
-
-
-float readOxygenSensor(int sensor) {
-  return (getO2Mv(sensor) * o2MvFactor[sensor]);
-}
-
-bool checkTolerance(float oxygen, int sensor) {
-  if ((o2MvFactor[sensor] != 0.0 && oxygen > 0.9) && (((((int)(oxygen * 10.0)) - targetOx[sensor]) > targetTolerance) || ((targetOx[sensor] - ((int)(oxygen * 10.0))) > targetTolerance))) {
-    return false;
-  }
-
-  else {
-    return true;
-  }
-
 }
 
 void optionsMenu() {
@@ -404,58 +433,69 @@ void calibrate() {
     printFloat(calibrationPoint, 0, 1);
     lcd.print("% Oxygen");
   }
-
-  //display the sensor mv until the button is clicked
   lcd.clear();
-  lcd.print("S1:");
-  lcd.setCursor(0, 1);
-  lcd.print("S2:");
-  do {
-    for (int sensor = 0; sensor < 2; sensor++) {
-      o2Mv = getO2Mv(sensor);  //read mv from O2 sensor
+  lcd.setCursor(7, 0);
+  lcd.write(byte(0));
+  lcd.print("Click to");
+  lcd.setCursor(7, 1);
+  lcd.write(byte(0));
+  lcd.print("confirm");
 
-      if (o2Mv < 0.1) {
-        lcd.setCursor(3, sensor);
-        lcd.print("    ");
-      }
-      else {
-        printFloat(o2Mv, 3, sensor);
-      }
-      lcd.print("mV");
+
+  do {
+    if (sensor1.mv() < 0.1) {
+      lcd.setCursor(0, 0);
+      lcd.print("    ");
     }
+    else {
+      printFloat(sensor1.mv(), 0, 0);
+    }
+    lcd.print("mV");
+    if (sensor2.mv() < 0.1) {
+      lcd.setCursor(0, 1);
+      lcd.print("    ");
+    }
+    else {
+      printFloat(sensor2.mv(), 0, 1);
+    }
+    lcd.print("mV");
+
 
   } while (!buttonDetect(buttonPin));
 
-  //validate the calData and then save to eeprom if it is good.
-  for (int sensor = 0; sensor < 2; sensor++) {
-    o2MvFactor[sensor] = calibrationPoint / getO2Mv(sensor);
-    if (validateCalData(o2MvFactor[sensor]) == 0.0) {
-      setCalData(sensor, o2MvFactor[sensor]);
-    }
-
-    else if (getO2Mv(sensor) < 0.1) {
-      setCalData(sensor, 0.0);
-    }
-
-    else {
-      lcd.clear();
-      lcd.print("Bad Calibration");
-      lcd.setCursor(0, 1);
-      lcd.print("Data");
-      delay(5000);
-      calibrate();
-    }
+  if (sensor1.isConnected() && ((calibrationPoint / sensor1.mv() > 1.615 && calibrationPoint / sensor1.mv() < 2.625))) {
+    sensor1.saveCalibration(calibrationPoint / sensor1.mv());
+  }
+  else if (!sensor1.isConnected()) {
+    sensor1.saveCalibration(0.0);
+  }
+  else {
+    lcd.clear();
+    lcd.print("Bad Calibration");
+    lcd.setCursor(0, 1);
+    lcd.print("Data");
+    delay(3000);
+    calibrate();
+  }
+  if (sensor2.isConnected() && ((calibrationPoint / sensor2.mv() > 1.615 && calibrationPoint / sensor2.mv() < 2.625))) {
+    sensor2.saveCalibration(calibrationPoint / sensor2.mv());
+  }
+  else if (!sensor2.isConnected()) {
+    sensor2.saveCalibration(0.0);
+  }
+  else {
+    lcd.clear();
+    lcd.print("Bad Calibration");
+    lcd.setCursor(0, 1);
+    lcd.print("Data");
+    delay(3000);
+    calibrate();
   }
 
   lcd.clear();
   lcd.print("Calibration");
   lcd.setCursor(0, 1);
   lcd.print("Saved");
-
-  //read the calData before returning to the main loop
-  for (int sensor = 0; sensor < 2; sensor++) {
-    o2MvFactor[sensor] = getO2CalData(sensor);
-  }
 
   delay(1500);
   lcd.clear();
@@ -476,6 +516,7 @@ void setMixTarget() {
     else if (currentSetting < 0) {
       currentSetting = 0;
     }
+    sensor1.setTarget(currentSetting * 10);
     targetOx[1] = (currentSetting * 10); // have to multiply by 10, because everywhere else uses tenths. the desired oxygen content is used for  the S2 target
     printInt(currentSetting, 7, 1);
     lcd.print("/00");
@@ -502,13 +543,10 @@ void setMixTarget() {
 
 
 float setSensorTargets() {
-  for (int sensor = 0; sensor < 2; sensor++) {
-    lcd.setCursor(7, 0);
-    lcd.print("S");
-    lcd.print(sensor + 1);
-    lcd.print(" Target");
-    currentSetting = targetOx[sensor];
-
+  if (sensor1.isConnected() && sensor1.isCalibrated()) {
+  lcd.setCursor(7, 0);
+    lcd.print("S1 Target");
+    currentSetting = sensor1.getTarget();
     while (!buttonDetect(buttonPin)) {
       displayOxygen();
       if (currentSetting > 1000) {
@@ -517,18 +555,38 @@ float setSensorTargets() {
       else if (currentSetting < 0) {
         currentSetting = 0;
       }
-      targetOx[sensor] = currentSetting;
-      printFloat(((float) targetOx[sensor] / 10.0), 7, 1);
+      sensor1.setTarget(currentSetting);
+      printFloat(((float) sensor1.getTarget() / 10.0), 7, 1);
       lcd.print("% O2");
     }
+    clearRightScreen();
+
   }
-  clearRightScreen();
+  if (sensor2.isConnected() && sensor2.isCalibrated()) {
+
+  lcd.setCursor(7, 0);
+    lcd.print("S2 Target");
+    currentSetting = sensor2.getTarget();
+    while (!buttonDetect(buttonPin)) {
+      displayOxygen();
+      if (currentSetting > 1000) {
+        currentSetting = 1000;
+      }
+      else if (currentSetting < 0) {
+        currentSetting = 0;
+      }
+      sensor2.setTarget(currentSetting);
+      printFloat(((float) sensor2.getTarget() / 10.0), 7, 1);
+      lcd.print("% O2");
+    }
+    clearRightScreen();
+  }
   lcd.setCursor(7, 0);
 
   lcd.print("Tolerance");
   currentSetting = targetTolerance;
   while (!buttonDetect(buttonPin)) {
-    displayOxygen();
+  displayOxygen();
     if (currentSetting > 1000) {
       currentSetting = 1000;
     }
@@ -540,10 +598,10 @@ float setSensorTargets() {
     lcd.print(" pts.");
   }
   displayMode = 2;
-  lcd.setCursor(7, 0);
-  lcd.print("         ");
-  lcd.setCursor(7, 1);
-  lcd.print("         ");
+                lcd.setCursor(7, 0);
+                lcd.print("         ");
+                lcd.setCursor(7, 1);
+                lcd.print("         ");
 
 }
 
@@ -586,6 +644,7 @@ void clearRightScreen() {
   lcd.setCursor(7, 1);
   lcd.print("         ");
 }
+
 
 //the first of two ISRs to detect pulses from the quadrature encoder
 void aEncoderInterrupt() {
