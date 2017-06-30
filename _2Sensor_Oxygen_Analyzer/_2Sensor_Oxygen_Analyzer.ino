@@ -1,4 +1,4 @@
-//a two sensor oxygen analyzer by ben shiner
+//a two sensor oxygen analyzer by Ben Shiner
 //minimum parts list:
 //Arduino or compatible (I used the Adafruit Feather 32u4 proto board)
 //ADS1115 (also available from Adafruit)
@@ -38,9 +38,8 @@
 #define outPin A4
 #define batteryPin A9
 
-LiquidCrystal lcd(13, 12, 11, 10, 6, 5); //create LCD object, these pins are the ones i chose to use on the adafruit feather 32u4 proto board
+LiquidCrystal lcd(13, 12, 11, 10, 6, 5); //create LCD object, these pins are the ones I chose to use on the adafruit feather 32u4 proto board
 Adafruit_ADS1115 ads1115;  //create ADC object
-
 
 int buttonState;
 int lastButtonState = HIGH;
@@ -49,13 +48,11 @@ unsigned long lastDisplayMillis = millis();
 unsigned long sampleRate = 400;
 unsigned long debounceMillis = 0;
 unsigned long debounceDelay = 50;
-int targetOx[2] = {209, 209}; //Floats don't do comparison well, so I'm using ints for oxygen % and the tolerance, and then dividing by 10 where necessary
 int targetTolerance = 15;
 int displayMode = 0;
-boolean withinTolerance[2] = {true, true};
 boolean updateRightDisplay = false;
 int targetHe = 0;
-
+int inferredHe = 0;
 
 //use volatie variables when they get changed by an ISR (interrupt service routine)
 volatile bool aCurrentState;
@@ -75,6 +72,7 @@ class Sensor {
     int target = 209;
     boolean calibrationLoaded = false;
     float savedFactor = 0.0;
+
   public:
     Sensor(int sensorNumber) {
       sensorIndex = sensorNumber;
@@ -93,6 +91,13 @@ class Sensor {
       }
       return false;
     }
+
+	boolean isActive() {
+		if (this->isCalibrated() && this->isConnected()) {
+			return true;
+		}
+		return false;
+	}
 
     boolean isInTolerance() {
       if (this->isCalibrated() && this->isConnected()) {
@@ -150,8 +155,6 @@ class Sensor {
 Sensor sensor1(0);
 Sensor sensor2(1);
 void setup() {
-
-
   //set pin modes, use pullup resistors on the input pins to help filter out noise
   pinMode(buttonPin, INPUT_PULLUP);
   pinMode(encoderPinA, INPUT_PULLUP);
@@ -162,15 +165,13 @@ void setup() {
   attachInterrupt(digitalPinToInterrupt(encoderPinA), aEncoderInterrupt, CHANGE);
   attachInterrupt(digitalPinToInterrupt(encoderPinB), bEncoderInterrupt, CHANGE);
 
-
-  lcd.begin(16, 2); //configure columns and rows for 16x2 lcd
+  lcd.begin(16, 2); 
   lcd.createChar(0, thickSeparator);
   lcd.createChar(1, thinSeparator);
   lcd.createChar(2, targetSymbol);
-  ads1115.begin();  //start ADC object
+  ads1115.begin();  
   ads1115.setGain(GAIN_SIXTEEN); //set gain on ADC to +/-.256v to get the best resolution on the o2 millivolts
 
-  //print a message at startup
   lcd.setCursor(3, 0);
   lcd.print("MixMonitor");
   lcd.setCursor(0, 1);
@@ -181,8 +182,7 @@ void setup() {
   delay(2000);
   lcd.clear();
 
-
-  //if the calibration button is down, run the calibrate routine, otherwise validate the calibration data
+  //if the calibration button is down, run the calibrate routine, otherwise validate the calibration data for connected sensors
   if (digitalRead(buttonPin) == LOW) {
     calibrate();
   }
@@ -205,8 +205,6 @@ void loop() {
   }
 }
 
-
-
 //uses edge detection and debouncing to detect button pushes
 boolean buttonDetect(int detectPin) {
   boolean buttonPushed = false;
@@ -220,11 +218,8 @@ boolean buttonDetect(int detectPin) {
     debounceMillis = millis();
     buttonPushed = true;
   }
-
   return buttonPushed;
 }
-
-
 
 float getVoltage() {
   float batteryVoltage = analogRead(batteryPin) * 2.0 * 3.3 / 1024;
@@ -237,7 +232,11 @@ void displayOxygen() {
       printFloat(sensor1.oxygenContent(), 0, 0);
       lcd.print("%");
     }
-    else {
+	else if (displayMode == 1){
+		lcd.setCursor(0, 0);
+		lcd.print("-AIR-");
+	}
+	else {
       lcd.setCursor(0, 0);
       lcd.print("     ");
     }
@@ -261,7 +260,7 @@ void displayOxygen() {
 void displayRight() {
   if (updateRightDisplay) {
     if (displayMode == 0) {
-      if (!sensor1.isConnected() || !sensor1.isCalibrated()  || sensor1.mv() <= 0.0) {
+      if (!sensor1.isActive()  || sensor1.mv() <= 0.0) {
         lcd.setCursor(7, 0);
         lcd.print("         ");
       }
@@ -271,7 +270,7 @@ void displayRight() {
         printFloat(sensor1.mv(), 8, 0);
         lcd.print(" mV");
       }
-      if (!sensor2.isConnected() || !sensor2.isCalibrated() || sensor2.mv() <= 0.0) {
+      if (!sensor2.isActive() || sensor2.mv() <= 0.0) {
         lcd.setCursor(7, 1);
         lcd.print("         ");
       }
@@ -283,9 +282,17 @@ void displayRight() {
       }
     }
     if (displayMode == 1) {
-      //needs error handling for when only 1 sensor is connected, and tolerance checking.
-              lcd.setCursor(7, 0);
-      if (sensor1.isConnected() && sensor1.isCalibrated()) {
+		while (!sensor2.isActive()) {
+			lcd.setCursor(8, 0);
+			lcd.print("S2 ERROR");
+			lcd.setCursor(7, 1);
+			lcd.print("         ");
+			displayOxygen();
+		}
+
+      //needs tolerance checking.
+      lcd.setCursor(7, 0);
+      if (sensor1.isActive()) {
         lcd.write(byte(2));
         printInt((sensor1.getTarget() / 10), 8, 0);
       }
@@ -293,10 +300,10 @@ void displayRight() {
         lcd.print("   ");
       }
 
-      lcd.setCursor(12, 0);
-      lcd.print("Mix");
+      lcd.setCursor(10, 0);
+      lcd.print("  Mix ");
       lcd.setCursor(7, 1);
-      if (sensor2.isConnected() && sensor2.isCalibrated()) {
+      if (sensor2.isActive()) {
         lcd.write(byte(2));
         printInt((sensor2.getTarget() / 10), 8, 1);
       }
@@ -306,18 +313,24 @@ void displayRight() {
 
       printInt((int)(sensor2.oxygenContent() + 0.5), 11, 1);
       lcd.print("/");
-      printInt((int)(((sensor1.oxygenContent() - sensor2.oxygenContent() / sensor1.oxygenContent()) * 100.0) + .5), 14, 1);
-
+	  if (sensor1.isActive()) {
+		  inferredHe = (int)((((sensor1.oxygenContent() - sensor2.oxygenContent()) / sensor1.oxygenContent()) * 100.0) + .5);
+	  }
+	  else {
+		  inferredHe = (int)((((20.9 - sensor2.oxygenContent()) / 20.9) * 100.0) + .5);
+	  }
+	  printInt(inferredHe, 14, 1);
     }
+
     if (displayMode == 2) {
       lcd.setCursor(7, 0);
       lcd.write(byte(2));
       lcd.setCursor(7, 1);
       lcd.write(byte(2));
-      if (sensor1.isConnected() && sensor1.isCalibrated()) {
+      if (sensor1.isActive()) {
         printFloat((float)sensor1.getTarget() / 10.0, 8, 0);
       }
-      if (sensor2.isConnected() && sensor2.isCalibrated()) {
+      if (sensor2.isActive()) {
         printFloat((float)sensor2.getTarget() / 10.0, 8, 1);
       }
 
@@ -417,7 +430,6 @@ void optionsMenu() {
         break;
     }
   }
-
 }
 
 void calibrate() {
@@ -456,7 +468,6 @@ void calibrate() {
   lcd.write(byte(0));
   lcd.print("confirm");
 
-
   do {
     if (sensor1.mv() <= 0.0) {
       lcd.setCursor(0, 0);
@@ -474,7 +485,6 @@ void calibrate() {
       printFloat(sensor2.mv(), 0, 1);
     }
     lcd.print("mV");
-
 
   } while (!buttonDetect(buttonPin));
 
@@ -506,7 +516,6 @@ void calibrate() {
     delay(3000);
     calibrate();
   }
-
   lcd.clear();
   lcd.print("Calibration");
   lcd.setCursor(0, 1);
@@ -514,7 +523,6 @@ void calibrate() {
 
   delay(1500);
   lcd.clear();
-
 }
 
 //update this logic to include more validations, ie s1 can't be less than 21. also make it clearer which #s you are updating by flashing or something...
@@ -553,11 +561,8 @@ void setMixTarget() {
   clearRightScreen();
 }
 
-
-
-
 float setSensorTargets() {
-  if (sensor1.isConnected() && sensor1.isCalibrated()) {
+  if (sensor1.isActive()) {
     lcd.setCursor(7, 0);
     lcd.print("S1 Target");
     currentSetting = sensor1.getTarget();
@@ -574,10 +579,9 @@ float setSensorTargets() {
       lcd.print("% O2");
     }
     clearRightScreen();
-
   }
-  if (sensor2.isConnected() && sensor2.isCalibrated()) {
 
+  if (sensor2.isActive()) {
     lcd.setCursor(7, 0);
     lcd.print("S2 Target");
     currentSetting = sensor2.getTarget();
@@ -616,9 +620,7 @@ float setSensorTargets() {
   lcd.print("         ");
   lcd.setCursor(7, 1);
   lcd.print("         ");
-
 }
-
 
 //prints floats in a nicely formatted way so they don't jump around on the LCD screen
 void printFloat(float floatToPrint, int column, int row) {
@@ -658,7 +660,6 @@ void clearRightScreen() {
   lcd.setCursor(7, 1);
   lcd.print("         ");
 }
-
 
 //the first of two ISRs to detect pulses from the quadrature encoder
 void aEncoderInterrupt() {
@@ -705,7 +706,6 @@ void aEncoderInterrupt() {
   }
   aPreviousState = aCurrentState;
   bPreviousState = bCurrentState;
-
 }
 
 void bEncoderInterrupt() {
@@ -744,12 +744,10 @@ void bEncoderInterrupt() {
     currentSetting++;
     encoderTicks = 0;
   }
-
   else if (encoderTicks <= -4) {
     currentSetting--;
     encoderTicks = 0;
   }
   aPreviousState = aCurrentState;
   bPreviousState = bCurrentState;
-
 }
