@@ -73,18 +73,20 @@ byte targetSymbol[8] = {B0, B1000, B1100, B1110, B1100, B1000, B0};
 class Sensor {
     int sensorIndex;
     int target = 209;
+    boolean calibrationLoaded = false;
+    float savedFactor = 0.0;
   public:
     Sensor(int sensorNumber) {
       sensorIndex = sensorNumber;
-
     }
+
     boolean isConnected() {
       if (this->mv() > 0.0) {
         return true;
       }
       return false;
-
     }
+
     boolean isCalibrated() {
       if (this->factor() > 0.0) {
         return true;
@@ -104,13 +106,14 @@ class Sensor {
 
     float factor() {
       int eeAddress = sensorIndex * sizeof(float);
-      float savedFactor;
-      EEPROM.get(eeAddress, savedFactor);
-      if (savedFactor > 1.615 && savedFactor < 2.625) {
-        return savedFactor;
+      if (!this->calibrationLoaded) {
+        EEPROM.get(eeAddress, this->savedFactor);
+        this->calibrationLoaded = true;
+        if (this->savedFactor < 1.615 || this->savedFactor > 2.625) {
+          this->savedFactor = 0.0;
+        }
       }
-      return 0.0;
-
+      return this->savedFactor;
     }
 
     float mv() {
@@ -120,23 +123,25 @@ class Sensor {
       if (sensorIndex == 1) {
         return ads1115.readADC_Differential_2_3() * 256.0 / 32767.0; //read from ADC and convert to mv
       }
-      return -1.0;
+      return 0.0;
     }
 
     float oxygenContent() {
       if (this->isCalibrated() && this->isConnected() && this->mv() > 0.0) {
         return  this->mv() * this->factor();
       }
-      return -1.0;
+      return 0.0;
     }
+
     void saveCalibration(float calData) {
       int eeAddress = sensorIndex * sizeof(float);
       EEPROM.put(eeAddress, calData);
-
     }
+
     void setTarget(int target) {
       this->target = target;
     }
+
     int getTarget() {
       return this->target;
     }
@@ -228,8 +233,7 @@ float getVoltage() {
 
 void displayOxygen() {
   if ((millis() - lastSampleMillis) > sampleRate) {
-    //loop through each sensor and calculate the o2 reading, but don't print if o2% is less than .9, to avoid displaying bad readings
-    if (sensor1.oxygenContent() >= 0.0) {
+    if (sensor1.oxygenContent() > 0.0) {
       printFloat(sensor1.oxygenContent(), 0, 0);
       lcd.print("%");
     }
@@ -237,7 +241,7 @@ void displayOxygen() {
       lcd.setCursor(0, 0);
       lcd.print("     ");
     }
-    if (sensor2.oxygenContent() >= 0.0) {
+    if (sensor2.oxygenContent() > 0.0) {
       printFloat(sensor2.oxygenContent(), 0, 1);
       lcd.print("%");
     }
@@ -280,16 +284,27 @@ void displayRight() {
     }
     if (displayMode == 1) {
       //needs error handling for when only 1 sensor is connected, and tolerance checking.
-      int oxygenInMix = ((int)(sensor2.oxygenContent() + 0.5));
-      lcd.setCursor(7, 0);
-      lcd.write(byte(2));
-      printInt((targetOx[0] / 10), 8, 0);
+              lcd.setCursor(7, 0);
+      if (sensor1.isConnected() && sensor1.isCalibrated()) {
+        lcd.write(byte(2));
+        printInt((sensor1.getTarget() / 10), 8, 0);
+      }
+      else {
+        lcd.print("   ");
+      }
+
       lcd.setCursor(12, 0);
       lcd.print("Mix");
       lcd.setCursor(7, 1);
-      lcd.write(byte(2));
-      printInt((targetOx[1] / 10), 8, 1);
-      printInt(oxygenInMix, 11, 1);
+      if (sensor2.isConnected() && sensor2.isCalibrated()) {
+        lcd.write(byte(2));
+        printInt((sensor2.getTarget() / 10), 8, 1);
+      }
+      else {
+        lcd.print("   ");
+      }
+
+      printInt((int)(sensor2.oxygenContent() + 0.5), 11, 1);
       lcd.print("/");
       printInt((int)(((sensor1.oxygenContent() - sensor2.oxygenContent() / sensor1.oxygenContent()) * 100.0) + .5), 14, 1);
 
@@ -443,7 +458,7 @@ void calibrate() {
 
 
   do {
-    if (sensor1.mv() < 0.1) {
+    if (sensor1.mv() <= 0.0) {
       lcd.setCursor(0, 0);
       lcd.print("    ");
     }
@@ -451,7 +466,7 @@ void calibrate() {
       printFloat(sensor1.mv(), 0, 0);
     }
     lcd.print("mV");
-    if (sensor2.mv() < 0.1) {
+    if (sensor2.mv() <= 0.0) {
       lcd.setCursor(0, 1);
       lcd.print("    ");
     }
@@ -516,8 +531,7 @@ void setMixTarget() {
     else if (currentSetting < 0) {
       currentSetting = 0;
     }
-    sensor1.setTarget(currentSetting * 10);
-    targetOx[1] = (currentSetting * 10); // have to multiply by 10, because everywhere else uses tenths. the desired oxygen content is used for  the S2 target
+    sensor2.setTarget(currentSetting * 10);
     printInt(currentSetting, 7, 1);
     lcd.print("/00");
   }
@@ -526,15 +540,15 @@ void setMixTarget() {
   while (!buttonDetect(buttonPin)) {
 
     displayOxygen();
-    if (currentSetting + (targetOx[1] / 10) > 99) {
-      currentSetting = 100 - (targetOx[1] / 10);
+    if (currentSetting + (sensor2.getTarget() / 10) > 99) {
+      currentSetting = 100 - (sensor2.getTarget() / 10);
     }
     else if (currentSetting < 0) {
       currentSetting = 0;
     }
-    targetOx[0] = ((float) targetOx[1] / 10.0) / (100.0 - (float)currentSetting) * 1000 ; // the formula is: s1 = s2/1-he
-    targetHe = currentSetting;
-    printInt(currentSetting, 10, 1);
+    sensor1.setTarget(((float) sensor2.getTarget() / 10.0) / (100.0 - (float)currentSetting) * 1000); // this sets the target for s1, the formula is: s1 = s2/1-he
+    targetHe = currentSetting;  // this sets the target HE content
+    printInt(targetHe, 10, 1);
   }
   clearRightScreen();
 }
@@ -544,7 +558,7 @@ void setMixTarget() {
 
 float setSensorTargets() {
   if (sensor1.isConnected() && sensor1.isCalibrated()) {
-  lcd.setCursor(7, 0);
+    lcd.setCursor(7, 0);
     lcd.print("S1 Target");
     currentSetting = sensor1.getTarget();
     while (!buttonDetect(buttonPin)) {
@@ -564,7 +578,7 @@ float setSensorTargets() {
   }
   if (sensor2.isConnected() && sensor2.isCalibrated()) {
 
-  lcd.setCursor(7, 0);
+    lcd.setCursor(7, 0);
     lcd.print("S2 Target");
     currentSetting = sensor2.getTarget();
     while (!buttonDetect(buttonPin)) {
@@ -586,7 +600,7 @@ float setSensorTargets() {
   lcd.print("Tolerance");
   currentSetting = targetTolerance;
   while (!buttonDetect(buttonPin)) {
-  displayOxygen();
+    displayOxygen();
     if (currentSetting > 1000) {
       currentSetting = 1000;
     }
@@ -598,10 +612,10 @@ float setSensorTargets() {
     lcd.print(" pts.");
   }
   displayMode = 2;
-                lcd.setCursor(7, 0);
-                lcd.print("         ");
-                lcd.setCursor(7, 1);
-                lcd.print("         ");
+  lcd.setCursor(7, 0);
+  lcd.print("         ");
+  lcd.setCursor(7, 1);
+  lcd.print("         ");
 
 }
 
