@@ -52,7 +52,10 @@ int targetTolerance = 15;
 int displayMode = 0;
 boolean updateRightDisplay = false;
 int targetHe = 0;
+<<<<<<< HEAD
 int inferredHe = 0;
+=======
+>>>>>>> fe6395889e2b2411b9f16d212bf728f94a9e10a7
 
 //use volatie variables when they get changed by an ISR (interrupt service routine)
 volatile bool aCurrentState;
