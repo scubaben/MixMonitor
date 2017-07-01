@@ -240,6 +240,7 @@ void displayOxygen() {
       lcd.setCursor(0, 0);
       lcd.print("     ");
     }
+
     if (sensor2.oxygenContent() > 0.0) {
       printFloat(sensor2.oxygenContent(), 0, 1);
       lcd.print("%");
@@ -282,44 +283,60 @@ void displayRight() {
 			}
 		}
 		if (displayMode == 1) {
-			while (!sensor2.isActive()) {
+			if (!sensor2.isActive()) {
 				lcd.setCursor(8, 0);
 				lcd.print("S2 ERROR");
 				lcd.setCursor(7, 1);
 				lcd.print("         ");
+				digitalWrite(ledPin, HIGH);
+				digitalWrite(outPin, HIGH);
 				displayOxygen();
 			}
 
 			//needs tolerance checking.
-			lcd.setCursor(7, 0);
-			if (sensor1.isActive()) {
-				lcd.write(byte(2));
-				printInt((sensor1.getTarget() / 10), 8, 0);
-			}
-			else {
-				lcd.print("   ");
-			}
-
-			lcd.setCursor(10, 0);
-			lcd.print("  Mix ");
-			lcd.setCursor(7, 1);
 			if (sensor2.isActive()) {
-				lcd.write(byte(2));
-				printInt((sensor2.getTarget() / 10), 8, 1);
-			}
-			else {
-				lcd.print("   ");
-			}
+				lcd.setCursor(7, 0);
+				if (sensor1.isActive()) {
+					lcd.write(byte(2));
+					printInt((sensor1.getTarget() / 10), 8, 0);
+				}
+				else {
+					lcd.print("   ");
+				}
 
-			printInt((int)(sensor2.oxygenContent() + 0.5), 11, 1);
-			lcd.print("/");
-			if (sensor1.isActive()) {
-				inferredHe = (int)((((sensor1.oxygenContent() - sensor2.oxygenContent()) / sensor1.oxygenContent()) * 100.0) + .5);
+				lcd.setCursor(10, 0);
+				lcd.print("  Mix ");
+				lcd.setCursor(7, 1);
+				if (sensor2.isActive()) {
+					lcd.write(byte(2));
+					printInt((sensor2.getTarget() / 10), 8, 1);
+				}
+				else {
+					lcd.print("   ");
+				}
+
+				printInt((int)(sensor2.oxygenContent() + 0.5), 11, 1);
+				lcd.print("/");
+				if (sensor1.isActive()) {
+					inferredHe = (int)((((sensor1.oxygenContent() - sensor2.oxygenContent()) / sensor1.oxygenContent()) * 100.0) + .5);
+				}
+				else {
+					inferredHe = (int)((((20.9 - sensor2.oxygenContent()) / 20.9) * 100.0) + .5);
+				}
+				if (inferredHe < 0) {
+					inferredHe = 0;
+				}
+				printInt(inferredHe, 14, 1);
+
+				if (!sensor2.isInTolerance() || (inferredHe > targetHe + targetTolerance) || (inferredHe < targetHe - targetTolerance)){ 
+					digitalWrite(ledPin, HIGH);
+					digitalWrite(outPin, HIGH);
+				}
+				else {
+					digitalWrite(ledPin, LOW);
+					digitalWrite(outPin, LOW);
+				}
 			}
-			else {
-				inferredHe = (int)((((20.9 - sensor2.oxygenContent()) / 20.9) * 100.0) + .5);
-			}
-			printInt(inferredHe, 14, 1);
 		}
 
 		if (displayMode == 2) {
@@ -384,14 +401,6 @@ void optionsMenu() {
     switch (currentSetting) {
       case 0:
         lcd.setCursor(7, 0);
-        lcd.print("Calibrate");
-        if (buttonDetect(buttonPin)) {
-          exitOptionsMenu = true;
-          calibrate();
-        }
-        break;
-      case 1:
-        lcd.setCursor(7, 0);
         lcd.print("Set Mix");
         lcd.setCursor(7, 1);
         lcd.print("Target");
@@ -401,7 +410,7 @@ void optionsMenu() {
           setMixTarget();
         }
         break;
-      case 2:
+      case 1:
         lcd.setCursor(7, 0);
         lcd.print("O2 Sensor");
         lcd.setCursor(7, 1);
@@ -412,7 +421,7 @@ void optionsMenu() {
           setSensorTargets();
         }
         break;
-      case 3:
+      case 2:
         lcd.setCursor(7, 0);
         lcd.print("Disable");
         lcd.setCursor(7, 1);
@@ -425,6 +434,14 @@ void optionsMenu() {
           exitOptionsMenu = true;
         }
         break;
+	  case 3:
+		  lcd.setCursor(7, 0);
+		  lcd.print("Calibrate");
+		  if (buttonDetect(buttonPin)) {
+			  exitOptionsMenu = true;
+			  calibrate();
+		  }
+		  break;
       case 4:
         lcd.setCursor(7, 0);
         lcd.print("Exit");
@@ -439,7 +456,6 @@ void optionsMenu() {
 
 void calibrate() {
   float calibrationPoint;
-  float o2Mv;
   lcd.clear();
   lcd.setCursor(4, 0);
   lcd.print("Entering");
@@ -532,7 +548,6 @@ void calibrate() {
 
 //update this logic to include more validations, ie s1 can't be less than 21. also make it clearer which #s you are updating by flashing or something...
 void setMixTarget() {
-  displayMode = 1;
   lcd.setCursor(7, 0);
   lcd.print("Tgt. Mix:");
   currentSetting = 21; //when setting the target mix, we'll use whole percentages instead of tenths.
@@ -548,7 +563,6 @@ void setMixTarget() {
     printInt(currentSetting, 7, 1);
     lcd.print("/00");
   }
-
   currentSetting = 0;
   while (!buttonDetect(buttonPin)) {
 
@@ -564,6 +578,24 @@ void setMixTarget() {
     printInt(targetHe, 10, 1);
   }
   clearRightScreen();
+  lcd.setCursor(7, 0);
+
+  lcd.print("Tolerance");
+  currentSetting = targetTolerance;
+  while (!buttonDetect(buttonPin)) {
+	  displayOxygen();
+	  if (currentSetting > 1000) {
+		  currentSetting = 1000;
+	  }
+	  else if (currentSetting < 0) {
+		  currentSetting = 0;
+	  }
+	  targetTolerance = currentSetting;
+	  printFloat(((float)targetTolerance / 10.0), 7, 1);
+	  lcd.print(" pts.");
+  }
+  clearRightScreen();
+  displayMode = 1;
 }
 
 float setSensorTargets() {
@@ -621,10 +653,7 @@ float setSensorTargets() {
     lcd.print(" pts.");
   }
   displayMode = 2;
-  lcd.setCursor(7, 0);
-  lcd.print("         ");
-  lcd.setCursor(7, 1);
-  lcd.print("         ");
+  clearRightScreen();
 }
 
 //prints floats in a nicely formatted way so they don't jump around on the LCD screen
