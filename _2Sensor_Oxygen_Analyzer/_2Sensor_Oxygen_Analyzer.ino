@@ -79,7 +79,7 @@ class Sensor {
     }
 
     boolean isConnected() {
-      if (this->mv() > 0.0) {
+      if (this->mv() > 0.01) {
         return true;
       }
       return false;
@@ -228,7 +228,7 @@ float getVoltage() {
 
 void displayOxygen() {
   if ((millis() - lastSampleMillis) > sampleRate) {
-    if (sensor1.oxygenContent() > 0.0) {
+    if (sensor1.oxygenContent() > 0.1) {
       printFloat(sensor1.oxygenContent(), 0, 0);
       lcd.print("%");
     }
@@ -241,7 +241,7 @@ void displayOxygen() {
       lcd.print("     ");
     }
 
-    if (sensor2.oxygenContent() > 0.0) {
+    if (sensor2.oxygenContent() > 0.1) {
       printFloat(sensor2.oxygenContent(), 0, 1);
       lcd.print("%");
     }
@@ -261,7 +261,7 @@ void displayOxygen() {
 void displayRight() {
 	if (updateRightDisplay) {
 		if (displayMode == 0) {
-			if (!sensor1.isActive() || sensor1.mv() <= 0.0) {
+			if (!sensor1.isActive()) {
 				lcd.setCursor(7, 0);
 				lcd.print("         ");
 			}
@@ -271,7 +271,7 @@ void displayRight() {
 				printFloat(sensor1.mv(), 8, 0);
 				lcd.print(" mV");
 			}
-			if (!sensor2.isActive() || sensor2.mv() <= 0.0) {
+			if (!sensor2.isActive()) {
 				lcd.setCursor(7, 1);
 				lcd.print("         ");
 			}
