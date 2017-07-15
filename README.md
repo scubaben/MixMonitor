@@ -36,4 +36,4 @@ In sensor target mode you can set your desired O2 targets for S1 and S2 individu
 
 To access the menu click down on the select button, use the knob to scroll through the menu and set your targets, tolerance, calibration FO2 etc...
 
-Please see the license for those details.
+Please see the license for permissions and limitations of the use of this software.
