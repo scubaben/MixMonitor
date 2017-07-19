@@ -141,6 +141,7 @@ class Sensor {
     void saveCalibration(float calData) {
       int eeAddress = sensorIndex * sizeof(float);
       EEPROM.put(eeAddress, calData);
+      this->calibrationLoaded = false; // Calibration should be reloaded on next call to read sensor.
     }
 
     void setTarget(int target) {
