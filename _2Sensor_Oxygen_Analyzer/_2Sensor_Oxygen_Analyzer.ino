@@ -67,6 +67,7 @@ byte thickSeparator[8]  = {B1010, B100, B1010, B100, B1010, B100, B1010};
 byte thinSeparator[8] = {B100, B0, B100, B0, B100, B0, B100};
 byte arrowRight[8] = {B0, B1000, B1100, B1110, B1100, B1000, B0};
 byte arrowLeft[8] = {B0, B10, B110, B1110, B110, B10, B0};
+byte otwo[8] = {B11, B1, B11110, B10111, B10100, B10100, B11100};
 
 class Sensor {
     int sensorIndex;
@@ -172,6 +173,8 @@ void setup() {
   lcd.createChar(1, thinSeparator);
   lcd.createChar(2, arrowRight);
   lcd.createChar(3, arrowLeft);
+  lcd.createChar(4, otwo);
+
   ads1115.begin();  
   ads1115.setGain(GAIN_SIXTEEN); //set gain on ADC to +/-.256v to get the best resolution on the o2 millivolts
 
@@ -232,7 +235,7 @@ float getVoltage() {
 void displayOxygen() {
   if ((millis() - lastSampleMillis) > sampleRate) {
     if (sensor1.oxygenContent() > 0.1) {
-      printFloat(sensor1.oxygenContent(), 0, 0);
+      printFloat(sensor1.oxygenContent(), false, 0, 0);
       lcd.print("%");
     }
 	else if (displayMode == 1){
@@ -245,7 +248,7 @@ void displayOxygen() {
     }
 
     if (sensor2.oxygenContent() > 0.1) {
-      printFloat(sensor2.oxygenContent(), 0, 1);
+      printFloat(sensor2.oxygenContent(), false, 0, 1);
       lcd.print("%");
     }
     else {
@@ -271,7 +274,7 @@ void displayRight() {
 			else {
 				lcd.setCursor(7, 0);
 				lcd.write(byte(2));
-				printFloat(sensor1.mv(), 8, 0);
+				printFloat(sensor1.mv(), false, 8, 0);
 				lcd.print(" mV");
 			}
 			if (!sensor2.isActive()) {
@@ -281,7 +284,7 @@ void displayRight() {
 			else {
 				lcd.setCursor(7, 1);
 				lcd.write(byte(2));
-				printFloat(sensor2.mv(), 8, 1);
+				printFloat(sensor2.mv(), false, 8, 1);
 				lcd.print(" mV");
 			}
 		}
@@ -301,7 +304,7 @@ void displayRight() {
 				lcd.setCursor(7, 0);
 				if (sensor1.isActive()) {
 					lcd.write(byte(2));
-					printInt((sensor1.getTarget() / 10), 8, 0);
+					printInt((sensor1.getTarget() / 10), false, 8, 0);
 				}
 				else {
 					lcd.print("   ");
@@ -312,13 +315,13 @@ void displayRight() {
 				lcd.setCursor(7, 1);
 				if (sensor2.isActive()) {
 					lcd.write(byte(2));
-					printInt((sensor2.getTarget() / 10), 8, 1);
+					printInt((sensor2.getTarget() / 10), false, 8, 1);
 				}
 				else {
 					lcd.print("   ");
 				}
 
-				printInt((int)(sensor2.oxygenContent() + 0.5), 11, 1);
+				printInt((int)(sensor2.oxygenContent() + 0.5), false, 11, 1);
 				lcd.print("/");
 				if (sensor1.isActive()) {
 					inferredHe = (int)((((sensor1.oxygenContent() - sensor2.oxygenContent()) / sensor1.oxygenContent()) * 100.0) + .5);
@@ -329,7 +332,7 @@ void displayRight() {
 				if (inferredHe < 0) {
 					inferredHe = 0;
 				}
-				printInt(inferredHe, 14, 1);
+				printInt(inferredHe, false, 14, 1);
 
 				if (!sensor2.isInTolerance() || (inferredHe > targetHe + targetTolerance) || (inferredHe < targetHe - targetTolerance)){ 
 					digitalWrite(ledPin, HIGH);
@@ -346,7 +349,7 @@ void displayRight() {
 			lcd.setCursor(7, 0);
 			if (sensor1.isActive()) {
 				lcd.write(byte(2));
-				printFloat((float)sensor1.getTarget() / 10.0, 8, 0);
+				printFloat((float)sensor1.getTarget() / 10.0, false, 8, 0);
 			}
 			else {
 				lcd.print("         ");
@@ -354,7 +357,7 @@ void displayRight() {
 			lcd.setCursor(7, 1);
 			if (sensor2.isActive()) {
 				lcd.write(byte(2));
-				printFloat((float)sensor2.getTarget() / 10.0, 8, 1);
+				printFloat((float)sensor2.getTarget() / 10.0, false, 8, 1);
 			}
 			else {
 				lcd.print("         ");
@@ -481,7 +484,7 @@ void calibrate() {
       currentSetting = 0;
     }
     calibrationPoint = (float) currentSetting / 10.0;
-    printFloat(calibrationPoint, 0, 1);
+    printFloat(calibrationPoint, false, 0, 1);
     lcd.print("% Oxygen");
   }
   lcd.clear();
@@ -498,7 +501,7 @@ void calibrate() {
       lcd.print("    ");
     }
     else {
-      printFloat(sensor1.mv(), 0, 0);
+      printFloat(sensor1.mv(), false, 0, 0);
     }
     lcd.print("mV");
     if (sensor2.mv() <= 0.0) {
@@ -506,7 +509,7 @@ void calibrate() {
       lcd.print("    ");
     }
     else {
-      printFloat(sensor2.mv(), 0, 1);
+      printFloat(sensor2.mv(), false, 0, 1);
     }
     lcd.print("mV");
 
@@ -567,6 +570,9 @@ void setMixTarget() {
     sensor2.setTarget(currentSetting * 10);
     printTarget(currentSetting, targetHe, 1, 7, 1);
   }
+  
+  lcd.setCursor(7, 1);
+  lcd.print("        ");
 
   // Set He Component
   currentSetting = targetHe; // Use target he.. no need to start from scratch.
@@ -597,8 +603,8 @@ void setMixTarget() {
 		  currentSetting = 0;
 	  }
 	  targetTolerance = currentSetting;
-	  printFloat(((float)targetTolerance / 10.0), 7, 1);
-	  lcd.print(" pts.");
+	  printFloat(((float)targetTolerance / 10.0), true, 8, 1);
+	  lcd.print("%");
   }
   clearRightScreen();
   displayMode = 1;
@@ -618,8 +624,9 @@ float setSensorTargets() {
         currentSetting = 0;
       }
       sensor1.setTarget(currentSetting);
-      printFloat(((float) sensor1.getTarget() / 10.0), 7, 1);
-      lcd.print("% O2");
+      printFloat(((float) sensor1.getTarget() / 10.0), true, 7, 1);
+      lcd.print("% ");
+      lcd.write(byte(4));
     }
     clearRightScreen();
   }
@@ -637,8 +644,9 @@ float setSensorTargets() {
         currentSetting = 0;
       }
       sensor2.setTarget(currentSetting);
-      printFloat(((float) sensor2.getTarget() / 10.0), 7, 1);
-      lcd.print("% O2");
+      printFloat(((float) sensor2.getTarget() / 10.0), true, 7, 1);
+      lcd.print("% ");
+      lcd.write(byte(4));
     }
     clearRightScreen();
   }
@@ -655,8 +663,8 @@ float setSensorTargets() {
       currentSetting = 0;
     }
     targetTolerance = currentSetting;
-    printFloat(((float)targetTolerance / 10.0), 7, 1);
-    lcd.print(" pts.");
+    printFloat(((float)targetTolerance / 10.0), true, 8, 1);
+    lcd.print("%");
   }
   displayMode = 2;
   clearRightScreen();
@@ -666,37 +674,35 @@ float setSensorTargets() {
 void printTarget(int t1, int t2, int highlight, int column, int row) {
   int t1pos = column;
   int t2pos = column + 3;
-  int seppos = column + 2;  
-  if (highlight == 1) {
-    lcd.setCursor(column, row);
-    lcd.write(byte(2));
-    lcd.setCursor(column + 3, row);
-    lcd.write(byte(3));
-    t1pos = column + 1;
+  int seppos = column + 2;
+
+  // Print appropriate highlights
+  if (highlight != 0) {
+    t1pos = column;
     t2pos = column + 5;
     seppos = column + 4;
-  } else if (highlight == 2) {
-    lcd.setCursor(column + 3, row);
-    lcd.write(byte(2));
-    lcd.setCursor(column + 6, row);
-    lcd.write(byte(3));
-    t2pos = column + 4;
   }
-  printInt(t1, t1pos, row);
+  printInt(t1, (highlight == 1) ? true : false, (highlight == 1) ? t1pos : t1pos + 1, row);
   lcd.setCursor(seppos, row);
   lcd.print("/");
-  printInt(t2, t2pos, row); 
+  printInt(t2, (highlight == 2) ? true : false, (highlight == 2) ? t2pos : t2pos + 1, row); 
 }
 
 
 //prints floats in a nicely formatted way so they don't jump around on the LCD screen
-void printFloat(float floatToPrint, int column, int row) {
+void printFloat(float floatToPrint, bool highlight, int column, int row) {
   String formattedValue = String(floatToPrint, 1);
+  
+  lcd.setCursor(column, row);
+  
+  if (highlight) {
+    lcd.write(byte(2));
+  }
+
 
   if (formattedValue.length() > 4) {
     formattedValue = formattedValue.substring(0, 3);
   }
-  lcd.setCursor(column, row);
 
   if (formattedValue.length() == 4) {
     lcd.print(formattedValue);
@@ -705,12 +711,22 @@ void printFloat(float floatToPrint, int column, int row) {
     lcd.print(" ");
     lcd.print(formattedValue);
   }
+  
+  if (highlight) {
+    lcd.setCursor(column + 5, row);
+    lcd.write(byte(3));
+  }
 }
 
 //prints ints in a nicely formatted way so they don't jump around on the LCD screen
-void printInt(int intToPrint, int column, int row) {
+void printInt(int intToPrint, bool highlight, int column, int row) {
   String formattedValue = String(intToPrint, DEC);
+  
   lcd.setCursor(column, row);
+
+  if (highlight) {
+    lcd.write(byte(2));
+  }
 
   if (formattedValue.length() == 2) {
     lcd.print(formattedValue);
@@ -718,6 +734,11 @@ void printInt(int intToPrint, int column, int row) {
   else {
     lcd.print("0");
     lcd.print(formattedValue);
+  }
+  
+  if (highlight) {
+    lcd.setCursor(column + 3, row);
+    lcd.write(byte(3));
   }
 }
 
