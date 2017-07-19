@@ -65,7 +65,8 @@ volatile int encoderTicks;
 //handy character designer: https://www.quinapalus.com/hd44780udg.html
 byte thickSeparator[8]  = {B1010, B100, B1010, B100, B1010, B100, B1010};
 byte thinSeparator[8] = {B100, B0, B100, B0, B100, B0, B100};
-byte targetSymbol[8] = {B0, B1000, B1100, B1110, B1100, B1000, B0};
+byte arrowRight[8] = {B0, B1000, B1100, B1110, B1100, B1000, B0};
+byte arrowLeft[8] = {B0, B10, B110, B1110, B110, B10, B0};
 
 class Sensor {
     int sensorIndex;
@@ -169,7 +170,8 @@ void setup() {
   lcd.begin(16, 2); 
   lcd.createChar(0, thickSeparator);
   lcd.createChar(1, thinSeparator);
-  lcd.createChar(2, targetSymbol);
+  lcd.createChar(2, arrowRight);
+  lcd.createChar(3, arrowLeft);
   ads1115.begin();  
   ads1115.setGain(GAIN_SIXTEEN); //set gain on ADC to +/-.256v to get the best resolution on the o2 millivolts
 
@@ -551,7 +553,9 @@ void calibrate() {
 void setMixTarget() {
   lcd.setCursor(7, 0);
   lcd.print("Tgt. Mix:");
-  currentSetting = 21; //when setting the target mix, we'll use whole percentages instead of tenths.
+
+  // Set O2 Component
+  currentSetting = (sensor2.getTarget() != 209) ? sensor2.getTarget() / 10 : 21; // Load existing target if there was one... otherwise start at 21.
   while (!buttonDetect(buttonPin)) {
     displayOxygen();
     if (currentSetting > 99) {
@@ -561,10 +565,11 @@ void setMixTarget() {
       currentSetting = 0;
     }
     sensor2.setTarget(currentSetting * 10);
-    printInt(currentSetting, 7, 1);
-    lcd.print("/00");
+    printTarget(currentSetting, targetHe, 1, 7, 1);
   }
-  currentSetting = 0;
+
+  // Set He Component
+  currentSetting = targetHe; // Use target he.. no need to start from scratch.
   while (!buttonDetect(buttonPin)) {
 
     displayOxygen();
@@ -576,7 +581,7 @@ void setMixTarget() {
     }
     sensor1.setTarget(((float) sensor2.getTarget() / 10.0) / (100.0 - (float)currentSetting) * 1000); // this sets the target for s1, the formula is: s1 = s2/1-he
     targetHe = currentSetting;  // this sets the target HE content
-    printInt(targetHe, 10, 1);
+    printTarget(sensor2.getTarget() / 10, currentSetting, 2, 7, 1);
   }
   clearRightScreen();
   lcd.setCursor(7, 0);
@@ -656,6 +661,33 @@ float setSensorTargets() {
   displayMode = 2;
   clearRightScreen();
 }
+
+//prints formatted target selection
+void printTarget(int t1, int t2, int highlight, int column, int row) {
+  int t1pos = column;
+  int t2pos = column + 3;
+  int seppos = column + 2;  
+  if (highlight == 1) {
+    lcd.setCursor(column, row);
+    lcd.write(byte(2));
+    lcd.setCursor(column + 3, row);
+    lcd.write(byte(3));
+    t1pos = column + 1;
+    t2pos = column + 5;
+    seppos = column + 4;
+  } else if (highlight == 2) {
+    lcd.setCursor(column + 3, row);
+    lcd.write(byte(2));
+    lcd.setCursor(column + 6, row);
+    lcd.write(byte(3));
+    t2pos = column + 4;
+  }
+  printInt(t1, t1pos, row);
+  lcd.setCursor(seppos, row);
+  lcd.print("/");
+  printInt(t2, t2pos, row); 
+}
+
 
 //prints floats in a nicely formatted way so they don't jump around on the LCD screen
 void printFloat(float floatToPrint, int column, int row) {
