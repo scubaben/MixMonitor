@@ -1,29 +1,68 @@
 # MixMonitor
-an arduino based program to read from two oxygen sensors.
+Arduino based two-sensor oxygen analyzer designed for continuous blending.
 
-I'm trying out visual micro as an IDE and it has added a bunch of extra files, if you are using the arduino IDE you just need the .ino file.
+## Introduction
+This application uses an Adafruit Feather to read from two oxygen sensors positioned in the intake stream of a compressor and calculates the inferred helium percentage using the difference between the two sensor readings. It is also possible to use this system with a single sensor, see the notes below for details.  The quadrature encoder (spinny clicky knob) is used to enter the menu, navigate, adjust settings, and make selections.  Click the select button to enter the menu, scroll the knob left and right to navigate and click down to make a selection.
 
-This program is designed to read from two oxygen sensors on a trimix stick, but can optionally be used with a single sensor (see notes  below).  To use this analyzer in the way it was designed your trimix stick should be setup to inject oxygen first, followed by sensor 1, then inject helium followed by sensor two, like so:
+The left side of the screen will always display the readings from any connected and calibrated sensors, the right side of the screen will display either mV, sensor targets and/or inferred mix depending on the mode selected.
+
+*NOTE: Feeding your compressor enriched air with an oxygen content greater than 21% poses significant risk, this software is provided without warranty and it may contain defects that could result in inaccurate sensor readings, it is your responsibility to take proper precautions to ensure your safety.*
+
+*NOTE: This type of analysis is not a substitute to analyzing what actually ends up in your tanks, and you must analyze your gas after you have filled.*
+
+## Setup
+This analyzer is designed to be connected to two sensors on a nitrox / trimix blending stick.  Your stick should be setup to inject oxygen first, followed by sensor 1, then inject helium followed by sensor two, like so:
 
 Fresh Air Intake -> Oxygen Injection -> Sensor 1 (S1) -> Helium Injection -> Sensor 2 (S2) -> Compressor Inlet
 
-When using a single sensor, plug it into S2 on the analyzer.
+## Calibration
+At startup the analyzer checks the calibration data in EEPROM.  If the data invalid or not found it will launch the calibration routine and allow you to calibrate the sensors.
 
-The analyzer has 3 modes, and a calibration routine:
-- Standard 
-- Mix target
-- Sensor Target
+Follow these steps to Calibrate:
+1) Enter calibration mode
+- Hold down the select button at startup *OR*
+- Click the select button to enter the menu, scroll to the 'Calibration' option, and click to select.
+2) Scroll left or right to choose your desired calibration FO2 and click to select.
+3) The mV readings for any connected cells will be displayed on the screen, once they stabilize click to save the calibration data.
 
-The analyzer will always startup in standard mode.  In this mode the analyzer will show you the O2 reading, and mV for any connected and calibrated cells.  If you have cells that are connected but not calibrated, it will ask you to calibrate on startup.  Optionally you can enter the calibration routine through the menu, or by holding down the select button at startup.
+*NOTE: This analyzer must be used with sensors that read between 8-13mV in air.*
 
-In mix target mode you can set your desired mix, and a tolerance and the analyzer will use the two connected sensors to read the level of oxygen and infer the level of helium in the mix.  When using a single sensor, the analyzer will assume that there is no Oxygen injection and the mix before the helium is injected will be air.  
+## Continuous Blending
+You can use this sensor in any number of ways, but its main use case is for continuous blending.  The analyzer has three different modes, described below.
+#### Standard Mode
+The analyzer will always startup in Standard Mode.  In this mode it will display the oxygen content read by any connected and calibrated sensors, along with the mV of each sensor.  You can return to Standard Mode by selecting the 'Disable Targets' menu option.
 
-If the inferred mix goes outside of your target the red LED will light and the OUT pin will go high.  The formula used to infer the helium content is (S1-S2)/S1, as an example if you were blending 10/50 - your S1 reading would be .21 (AIR) and your S2 reading would be .10, so (.21-.10)/.21 = .52, or a theoretical helium content of 52%.  This is not a substitute to analyzing what actually ends up in your tanks, and you must analyze your gas after you have filled.  Do not rely on this analyzer for life support purposes.
+#### Mix Target Mode
+In Mix Target Mode the analyzer will allow you to specify the oxygen and helium content of your desired mix and calculate the target FO2 for S1 and S2 to create that mix.  It will also calculate and display the inferred mix based on S1 and S2 readings.
 
-NOTE: The mix target function is in beta, use at your own risk please be familiar with the risks of running elevated oxygen levels through a compressor and ensure you are taking adequate precautions and appropriate safety measures.  If you plan on running over .21 FO2, please have a redundant analyzer to ensure that your readings are accurate - this code may have errors and produce inaccurate results.
+Follow these steps to use Mix Target Mode:
+1) Click the select button and scroll to the 'Mix Target' option, click to select
+2) Scroll to specify the Oxygen content of the target mix and click to select
+3) Scroll to specify the Helium content of the target mix and click to select
+4) Scroll to specify the tolerance in percentage points and click to select (see Alarms section below for further details on tolerance)
 
-In sensor target mode you can set your desired O2 targets for S1 and S2 individually, as with the Mix Target mode the LED and Out Pin will activate if the mix drifts outside the specified target/tolerance.
+The right side of the screen will update to display the FO2 target to the right of each sensor reading, and the current inferred mix calculated from the current S1 and S2 readings.
 
-To access the menu click down on the select button, use the knob to scroll through the menu and set your targets, tolerance, calibration FO2 etc...
+*NOTE: The mix target function is in beta, use at your own risk please be familiar with the risks of running elevated oxygen levels through a compressor and ensure you are taking adequate precautions and appropriate safety measures.  It is your responsibility to ensure your intake FO2 remains within safe levels.*
 
-Please see the license for permissions and limitations of the use of this software.
+*NOTE: If you are blending mixes where it is only necessary to add helium you can use this analyzer in single-sensor moder by connecting your sensor to S2.  In this configuration the analyzer will assume that the S1 reading is AIR and calculate the inferred mix based on an assumed S1 reading of .209*
+
+#### Sensor Target Mode
+In Sensor Target Mode the analzyer will allow you to directly specify the target FO2 for S1 and S2.  I didn't have a particular use case in mind for this mode, but I wanted to give you flexibility in how you use this analyzer.  This should cover most scenarios that are not already addressed by the Standard Mode or Mix Target Mode.
+
+Follow these steps to use Sensor Target Mode:
+1) Click the select button and scroll to the 'Sensor Target' option, click to select
+2) Scroll to specify the Oxygen content target for S1 and click to select
+3) Scroll to specify the Oxygen content target for S2 and click to select
+4) Scroll to specify the tolerance in percentage points and click to select (see Alarms section below for further details on tolerance)
+
+The right side of the screen will update to display the FO2 target to the right of each sensor reading.
+
+#### Alarms
+When using Mix Target or Sensor Target Modes you will specify a tolerance.  The analyzer will calculate the difference between the sensor readings, and the target and if the difference is greater than the tolerance specified it will light up the LED and set the OUT pin to HIGH.
+
+## Parts List
+
+
+##### Please see the license for permissions and limitations of the use of this software.
+*Note: I'm trying out visual micro as an IDE and it has added a bunch of extra files, if you are using the arduino IDE you just need the .ino file.*
