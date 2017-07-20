@@ -102,8 +102,10 @@ class Sensor {
 	}
 
     boolean isInTolerance() {
+	    float upperLimit = (float)this->target / 10.0 + (float)this->tolerance / 10.0;
+	    float lowerLimit = (float)this->target / 10.0 - (float)this->tolerance / 10.0;
       if (this->isCalibrated() && this->isConnected()) {
-        if ((this->oxygenContent() > (float) this->target / 10.0 + (float)this->tolerance / 10.0) || (this->oxygenContent() < (float) this->target / 10.0 - this->tolerance / 10.0)) {
+        if ((this->oxygenContent() > upperLimit) || (this->oxygenContent() < lowerLimit)) {
           return false;
         }
         return true;
@@ -112,11 +114,13 @@ class Sensor {
     }
 
     float factor() {
+	    float lowerFactorLimit = 1.615;
+	    float upperFactorLimit = 2.625;
       int eeAddress = sensorIndex * sizeof(float);
       if (!this->calibrationLoaded) {
         EEPROM.get(eeAddress, this->savedFactor);
         this->calibrationLoaded = true;
-        if (this->savedFactor < 1.615 || this->savedFactor > 2.625) {
+        if (this->savedFactor < lowerFactorLimit || this->savedFactor > upperFactorLimit) {
           this->savedFactor = 0.0;
         }
       }
