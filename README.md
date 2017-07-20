@@ -62,7 +62,26 @@ The right side of the screen will update to display the FO2 target to the right 
 When using Mix Target or Sensor Target Modes you will specify a tolerance.  The analyzer will calculate the difference between the sensor readings, and the target and if the difference is greater than the tolerance specified it will light up the LED and set the OUT pin to HIGH.
 
 ## Parts List
+|Description|Part #|Source|Qty|Unit Price|
+|-----------|------|------|---|----------|
+|Case|546-1591BS-BK|Mouser|1|$3.78|
+|Mono Cables|172-2008|Mouser|3|$4.58|
+|Mono Jacks|502-35RAPC2AV|Mouser|3|$1.51|
+|Rotary Encoder|652-PEC11R-4215F-S24|Mouser|1|$1.63|
+|Knob|450-BA600|Mouser|1|$1.14|
+|ADC Breakout|485-1085|Mouser|1|14.95|
+|3.3v LCD|332114998562|eBay|1|$6.55|
+|Feather 32u4 Proto|485-2771|Mouser|1|$19.95|
+|Battery|485-2011|Mouser|1|$12.50|
+|Molex Connector|538-22-01-3037|Mouser|3|$0.19|
+|Molex Pins|538-08-56-0110|Mouser|4|$0.36|
 
+You'll also need some miscellaneous items like: hookup wire, a fine-tip soldering iron, solder, wire strippers, and a crimper for the molex pins, mouting hardware and a power switch of your choosing.  I used this mounting hardware, and a power switch I found on amazon.
+|Description|Part #|Source|Qty|Unit Price|
+|-----------|------|------|---|----------|
+|1/4" 4-40 Standoffs (4-pack)|1946|Pololu.com|1|$1.29|
+|1/4" 4-40 Screws(25-pack)|1690|Pololu.com|1|$0.99|
+|1/4" 2-56 Screws (25-pack)|1955|Pololu.com|1|$0.99|
 
 ##### Please see the license for permissions and limitations of the use of this software.
 *Note: I'm trying out visual micro as an IDE and it has added a bunch of extra files, if you are using the arduino IDE you just need the .ino file.*
