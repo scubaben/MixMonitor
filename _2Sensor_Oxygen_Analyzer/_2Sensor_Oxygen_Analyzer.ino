@@ -104,13 +104,13 @@ class Sensor {
     boolean isInTolerance() {
 	    float upperLimit = (float)this->target / 10.0 + (float)this->tolerance / 10.0;
 	    float lowerLimit = (float)this->target / 10.0 - (float)this->tolerance / 10.0;
-      if (this->isCalibrated() && this->isConnected()) {
+	    if(!this->isActive()){
+		    return true;
+	    }
         if ((this->oxygenContent() > upperLimit) || (this->oxygenContent() < lowerLimit)) {
           return false;
         }
         return true;
-      }
-      return true;
     }
 
     float factor() {
@@ -147,7 +147,7 @@ class Sensor {
     void saveCalibration(float calData) {
       int eeAddress = sensorIndex * sizeof(float);
       EEPROM.put(eeAddress, calData);
-      this->calibrationLoaded = false; // Calibration should be reloaded on next call to read sensor.
+      this->calibrationLoaded = false; 
     }
 
     void setTarget(int target) {
@@ -170,7 +170,7 @@ class Sensor {
 Sensor sensor1(0);
 Sensor sensor2(1);
 void setup() {
-  //set pin modes, use pullup resistors on the input pins to help filter out noise
+
   pinMode(buttonPin, INPUT_PULLUP);
   pinMode(encoderPinA, INPUT_PULLUP);
   pinMode(encoderPinB, INPUT_PULLUP);
@@ -200,7 +200,6 @@ void setup() {
   delay(2000);
   lcd.clear();
 
-  //if the calibration button is down, run the calibrate routine, otherwise validate the calibration data for connected sensors
   if (digitalRead(buttonPin) == LOW) {
     calibrate();
   }
@@ -311,7 +310,6 @@ void displayRight() {
 				displayOxygen();
 			}
 
-			//needs tolerance checking.
 			if (sensor2.isActive()) {
 				lcd.setCursor(7, 0);
 				if (sensor1.isActive()) {
