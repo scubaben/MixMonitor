@@ -77,6 +77,7 @@ When using Mix Target or Sensor Target Modes you will specify a tolerance.  The 
 |Molex Pins|538-08-56-0110|Mouser|4|$0.36|
 
 You'll also need some miscellaneous items like: hookup wire, a fine-tip soldering iron, solder, wire strippers, and a crimper for the molex pins, mouting hardware and a power switch of your choosing.  I used this mounting hardware, and a power switch I found on amazon.
+
 |Description|Part #|Source|Qty|Unit Price|
 |-----------|------|------|---|----------|
 |1/4" 4-40 Standoffs (4-pack)|1946|Pololu.com|1|$1.29|
