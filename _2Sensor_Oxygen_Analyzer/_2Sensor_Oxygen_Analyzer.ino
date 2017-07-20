@@ -48,7 +48,6 @@ unsigned long lastDisplayMillis = millis();
 unsigned long sampleRate = 400;
 unsigned long debounceMillis = 0;
 unsigned long debounceDelay = 50;
-int targetTolerance = 15;
 int displayMode = 0;
 boolean updateRightDisplay = false;
 int targetHe = 0;
@@ -67,11 +66,12 @@ byte thickSeparator[8]  = {B1010, B100, B1010, B100, B1010, B100, B1010};
 byte thinSeparator[8] = {B100, B0, B100, B0, B100, B0, B100};
 byte arrowRight[8] = {B0, B1000, B1100, B1110, B1100, B1000, B0};
 byte arrowLeft[8] = {B0, B10, B110, B1110, B110, B10, B0};
-byte otwo[8] = {B11, B1, B11110, B10111, B10100, B10100, B11100};
+byte oTwo[8] = {B11, B1, B11110, B10111, B10100, B10100, B11100};
 
 class Sensor {
     int sensorIndex;
     int target = 209;
+	int tolerance = 15;
     boolean calibrationLoaded = false;
     float savedFactor = 0.0;
 
@@ -103,7 +103,7 @@ class Sensor {
 
     boolean isInTolerance() {
       if (this->isCalibrated() && this->isConnected()) {
-        if ((this->oxygenContent() > (float) this->target / 10.0 + (float)targetTolerance / 10.0) || (this->oxygenContent() < (float) this->target / 10.0 - (float)targetTolerance / 10.0)) {
+        if ((this->oxygenContent() > (float) this->target / 10.0 + (float)this->tolerance / 10.0) || (this->oxygenContent() < (float) this->target / 10.0 - this->tolerance / 10.0)) {
           return false;
         }
         return true;
@@ -153,6 +153,14 @@ class Sensor {
     int getTarget() {
       return this->target;
     }
+
+	void setTolerance(int tolerance) {
+		this->tolerance = tolerance;
+	}
+
+	int getTolerance() {
+		return this->tolerance;
+	}
 };
 
 Sensor sensor1(0);
@@ -173,7 +181,7 @@ void setup() {
   lcd.createChar(1, thinSeparator);
   lcd.createChar(2, arrowRight);
   lcd.createChar(3, arrowLeft);
-  lcd.createChar(4, otwo);
+  lcd.createChar(4, oTwo);
 
   ads1115.begin();  
   ads1115.setGain(GAIN_SIXTEEN); //set gain on ADC to +/-.256v to get the best resolution on the o2 millivolts
@@ -334,7 +342,7 @@ void displayRight() {
 				}
 				printInt(inferredHe, false, 14, 1);
 
-				if (!sensor2.isInTolerance() || (inferredHe > targetHe + targetTolerance) || (inferredHe < targetHe - targetTolerance)){ 
+				if (!sensor2.isInTolerance() || (inferredHe > targetHe + sensor2.getTolerance()) || (inferredHe < targetHe - sensor2.getTolerance())){ 
 					digitalWrite(ledPin, HIGH);
 					digitalWrite(outPin, HIGH);
 				}
@@ -484,7 +492,7 @@ void calibrate() {
       currentSetting = 0;
     }
     calibrationPoint = (float) currentSetting / 10.0;
-    printFloat(calibrationPoint, false, 0, 1);
+    printFloat(calibrationPoint, true, 0, 1);
     lcd.print("% Oxygen");
   }
   lcd.clear();
@@ -543,6 +551,14 @@ void calibrate() {
     delay(3000);
     calibrate();
   }
+  if (!sensor1.isConnected() && !sensor2.isConnected()) {
+	  lcd.clear();
+	  lcd.print("Bad Calibration");
+	  lcd.setCursor(0, 1);
+	  lcd.print("Data");
+	  delay(3000);
+	  calibrate();
+  }
   lcd.clear();
   lcd.print("Calibration");
   lcd.setCursor(0, 1);
@@ -593,7 +609,7 @@ void setMixTarget() {
   lcd.setCursor(7, 0);
 
   lcd.print("Tolerance");
-  currentSetting = targetTolerance;
+  currentSetting = sensor1.getTolerance();
   while (!buttonDetect(buttonPin)) {
 	  displayOxygen();
 	  if (currentSetting > 1000) {
@@ -602,8 +618,9 @@ void setMixTarget() {
 	  else if (currentSetting < 0) {
 		  currentSetting = 0;
 	  }
-	  targetTolerance = currentSetting;
-	  printFloat(((float)targetTolerance / 10.0), true, 8, 1);
+	  sensor1.setTolerance(currentSetting);
+	  sensor2.setTolerance(currentSetting); //setting tolerance for both sensors at once for now, may add ability to set tolerance by sensor in the future.
+	  printFloat(((float)sensor1.getTolerance() / 10.0), true, 8, 1);
 	  lcd.print("%");
   }
   clearRightScreen();
@@ -653,7 +670,7 @@ float setSensorTargets() {
   lcd.setCursor(7, 0);
 
   lcd.print("Tolerance");
-  currentSetting = targetTolerance;
+  currentSetting = sensor1.getTolerance();
   while (!buttonDetect(buttonPin)) {
     displayOxygen();
     if (currentSetting > 1000) {
@@ -662,8 +679,9 @@ float setSensorTargets() {
     else if (currentSetting < 0) {
       currentSetting = 0;
     }
-    targetTolerance = currentSetting;
-    printFloat(((float)targetTolerance / 10.0), true, 8, 1);
+    sensor1.setTolerance(currentSetting);
+	sensor2.setTolerance(currentSetting);  //setting tolerance for both sensors at once for now, may add ability to set tolerance by sensor in the future.
+    printFloat(((float)sensor1.getTolerance() / 10.0), true, 8, 1);
     lcd.print("%");
   }
   displayMode = 2;
