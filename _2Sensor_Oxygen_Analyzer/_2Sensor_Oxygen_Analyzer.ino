@@ -576,7 +576,7 @@ void setMixTarget() {
   lcd.print("Tgt. Mix:");
 
   // Set O2 Component
-  currentSetting = (sensor2.getTarget() != 209) ? sensor2.getTarget() / 10 : 21; // Load existing target if there was one... otherwise start at 21.
+  currentSetting = (sensor2.getTarget() != 209) ? sensor2.getTarget() / 10 : 21; 
   while (!buttonDetect(buttonPin)) {
     displayOxygen();
     if (currentSetting > 99) {
@@ -586,14 +586,16 @@ void setMixTarget() {
       currentSetting = 0;
     }
     sensor2.setTarget(currentSetting * 10);
-    printTarget(currentSetting, targetHe, 1, 7, 1);
+    printInt(sensor2.getTarget()/10, true, 7, 1);
+	lcd.print("/");
+	printInt(targetHe, false, 13, 1);
   }
   
   lcd.setCursor(7, 1);
   lcd.print("        ");
 
   // Set He Component
-  currentSetting = targetHe; // Use target he.. no need to start from scratch.
+  currentSetting = targetHe;
   while (!buttonDetect(buttonPin)) {
 
     displayOxygen();
@@ -605,7 +607,9 @@ void setMixTarget() {
     }
     sensor1.setTarget(((float) sensor2.getTarget() / 10.0) / (100.0 - (float)currentSetting) * 1000); // this sets the target for s1, the formula is: s1 = s2/1-he
     targetHe = currentSetting;  // this sets the target HE content
-    printTarget(sensor2.getTarget() / 10, currentSetting, 2, 7, 1);
+	printInt(sensor2.getTarget() / 10, false, 8, 1);
+	lcd.print(" /");
+	printInt(targetHe, true, 12, 1);
   }
   clearRightScreen();
   lcd.setCursor(7, 0);
@@ -690,25 +694,6 @@ float setSensorTargets() {
   clearRightScreen();
 }
 
-//prints formatted target selection
-void printTarget(int t1, int t2, int highlight, int column, int row) {
-  int t1pos = column;
-  int t2pos = column + 3;
-  int seppos = column + 2;
-
-  // Print appropriate highlights
-  if (highlight != 0) {
-    t1pos = column;
-    t2pos = column + 5;
-    seppos = column + 4;
-  }
-  printInt(t1, (highlight == 1) ? true : false, (highlight == 1) ? t1pos : t1pos + 1, row);
-  lcd.setCursor(seppos, row);
-  lcd.print("/");
-  printInt(t2, (highlight == 2) ? true : false, (highlight == 2) ? t2pos : t2pos + 1, row); 
-}
-
-
 //prints floats in a nicely formatted way so they don't jump around on the LCD screen
 void printFloat(float floatToPrint, bool highlight, int column, int row) {
   String formattedValue = String(floatToPrint, 1);
@@ -760,6 +745,7 @@ void printInt(int intToPrint, bool highlight, int column, int row) {
     lcd.setCursor(column + 3, row);
     lcd.write(byte(3));
   }
+
 }
 
 void clearRightScreen() {
