@@ -137,7 +137,7 @@ class Sensor {
     }
 
     float oxygenContent() {
-      if (this->isCalibrated() && this->isConnected() && this->mv() > 0.0) {
+      if (this->isActive() && this->mv() > 0.0) {
         return  this->mv() * this->factor();
       }
       return 0.0;
@@ -318,19 +318,11 @@ void displayRight() {
 				else {
 					lcd.print("   ");
 				}
-
 				lcd.setCursor(7, 1);
-				if (sensor2.isActive()) {
-					lcd.write(byte(2));
-					printInt((sensor2.getTarget() / 10), false, 8, 1);
-				}
-				else {
-					lcd.print("   ");
-				}
-
+				lcd.write(byte(2));
+				printInt((sensor2.getTarget() / 10), false, 8, 1);
 				lcd.setCursor(10, 0);
 				lcd.print("  Mix ");
-
 				printInt((int)(sensor2.oxygenContent() + 0.5), false, 11, 1);
 				lcd.print("/");
 				printInt(calculateHe(sensor1.oxygenContent(), sensor2.oxygenContent()), false, 14, 1);
