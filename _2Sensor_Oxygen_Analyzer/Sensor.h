@@ -17,7 +17,7 @@
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
-*/
+ */
 
 #include <Adafruit_ADS1015.h>
 
@@ -29,7 +29,7 @@ class Sensor {
     boolean calibrationLoaded = false;
     float savedFactor = 0.0;
     Adafruit_ADS1115 _adc;
-    
+
   public:
     Sensor() {};
     Sensor(int);

@@ -17,97 +17,97 @@
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
-*/
+ */
 
 #include <EEPROM.h>
 #include "Sensor.h"
 
-    Sensor::Sensor(int sensorNumber) {
-      sensorIndex = sensorNumber;
-      _adc.begin();
-      _adc.setGain(GAIN_SIXTEEN);
+Sensor::Sensor(int sensorNumber) {
+  sensorIndex = sensorNumber;
+  _adc.begin();
+  _adc.setGain(GAIN_SIXTEEN);
+}
+
+boolean Sensor::isConnected() {
+  if (this->mv() > 0.01) return true;
+
+  return false;
+}
+
+boolean Sensor::isCalibrated() {
+  if (this->factor() > 0.0) return true;
+
+  return false;
+}
+
+boolean Sensor::isActive() {
+  if (this->isCalibrated() && this->isConnected()) return true;
+
+  return false;
+}
+
+boolean Sensor::isInTolerance() {
+  float upperLimit = (float)this->target / 10.0 + (float)this->tolerance / 10.0;
+  float lowerLimit = (float)this->target / 10.0 - (float)this->tolerance / 10.0;
+
+  if (!this->isActive()) return true;
+
+  if ((this->oxygenContent() > upperLimit) || (this->oxygenContent() < lowerLimit)) return false;
+
+  return true;
+}
+
+float Sensor::factor() {
+  float lowerFactorLimit = 1.615;
+  float upperFactorLimit = 2.625;
+  int eeAddress = sensorIndex * sizeof(float);
+  if (!this->calibrationLoaded) {
+    EEPROM.get(eeAddress, this->savedFactor);
+    this->calibrationLoaded = true;
+    if (this->savedFactor < lowerFactorLimit || this->savedFactor > upperFactorLimit) {
+      this->savedFactor = 0.0;
     }
+  }
+  return this->savedFactor;
+}
 
-    boolean Sensor::isConnected() {
-      if (this->mv() > 0.01) return true;
-      
-      return false;
-    }
+float Sensor::mv() {
+  if (sensorIndex == 0) {
+    return _adc.readADC_Differential_0_1() * 256.0 / 32767.0; //read from ADC and convert to mv
+  }
+  if (sensorIndex == 1) {
+    return _adc.readADC_Differential_2_3() * 256.0 / 32767.0; //read from ADC and convert to mv
+  }
+  return 0.0;
+}
 
-    boolean Sensor::isCalibrated() {
-      if (this->factor() > 0.0) return true;
+float Sensor::oxygenContent() {
+  if (this->isActive() && this->mv() > 0.0) {
+    return  this->mv() * this->factor();
+  }
+  return 0.0;
+}
 
-      return false;
-    }
+void Sensor::saveCalibration(float calData) {
+  int eeAddress = sensorIndex * sizeof(float);
+  EEPROM.put(eeAddress, calData);
+  this->calibrationLoaded = false;
+}
 
-    boolean Sensor::isActive() {
-      if (this->isCalibrated() && this->isConnected()) return true;
-      
-      return false;
-    }
+void Sensor::setTarget(int target) {
+  this->target = target;
+}
 
-    boolean Sensor::isInTolerance() {
-      float upperLimit = (float)this->target / 10.0 + (float)this->tolerance / 10.0;
-      float lowerLimit = (float)this->target / 10.0 - (float)this->tolerance / 10.0;
-      
-      if (!this->isActive()) return true;
+int Sensor::getTarget() {
+  return this->target;
+}
 
-      if ((this->oxygenContent() > upperLimit) || (this->oxygenContent() < lowerLimit)) return false;
-      
-      return true;
-    }
+void Sensor::setTolerance(int tolerance) {
+  this->tolerance = tolerance;
+}
 
-    float Sensor::factor() {
-            float lowerFactorLimit = 1.615;
-            float upperFactorLimit = 2.625;
-      int eeAddress = sensorIndex * sizeof(float);
-      if (!this->calibrationLoaded) {
-        EEPROM.get(eeAddress, this->savedFactor);
-        this->calibrationLoaded = true;
-        if (this->savedFactor < lowerFactorLimit || this->savedFactor > upperFactorLimit) {
-          this->savedFactor = 0.0;
-        }
-      }
-      return this->savedFactor;
-    }
-
-    float Sensor::mv() {
-      if (sensorIndex == 0) {
-        return _adc.readADC_Differential_0_1() * 256.0 / 32767.0; //read from ADC and convert to mv
-      }
-      if (sensorIndex == 1) {
-        return _adc.readADC_Differential_2_3() * 256.0 / 32767.0; //read from ADC and convert to mv
-      }
-      return 0.0;
-    }
-
-    float Sensor::oxygenContent() {
-      if (this->isActive() && this->mv() > 0.0) {
-        return  this->mv() * this->factor();
-      }
-      return 0.0;
-    }
-
-    void Sensor::saveCalibration(float calData) {
-      int eeAddress = sensorIndex * sizeof(float);
-      EEPROM.put(eeAddress, calData);
-      this->calibrationLoaded = false;
-    }
-
-    void Sensor::setTarget(int target) {
-      this->target = target;
-    }
-
-    int Sensor::getTarget() {
-      return this->target;
-    }
-
-    void Sensor::setTolerance(int tolerance) {
-      this->tolerance = tolerance;
-    }
-
-    int Sensor::getTolerance() {
-      return this->tolerance;
-    }
+int Sensor::getTolerance() {
+  return this->tolerance;
+}
 
 
