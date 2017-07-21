@@ -397,7 +397,7 @@ void optionsMenu() {
     if (currentSetting > 4) {
       currentSetting = 0;
     }
-    if (currentSetting < 0) {
+    else if (currentSetting < 0) {
       currentSetting = 4;
     }
     if (currentSetting != lastMenuSelection) {
@@ -687,16 +687,8 @@ float setSensorTargets() {
 
 int calculateHe(float s1, float s2) {
 	int inferredHe;
-	if (!sensor1.isActive()) {
-		inferredHe = (int)(((20.9 - s2) / 20.9) * 100.0 + .5);
-	}
-	else {
-		inferredHe = (int)(((s1 - s2) / s1) * 100.0 + .5);
-	}
-	if (inferredHe < 0) {
-		inferredHe = 0;
-	}
-	return inferredHe;
+	(sensor1.isActive()) ? inferredHe = (int)(((s1 - s2) / s1) * 100.0 + .5 : inferredHe = (int)(((20.9 - s2) / 20.9) * 100.0 + .5);
+	return (inferredHe > 0) ? inferredHe : 0;
 }
 
 bool heInTolerance(int inferredHe, int tolerance) {
@@ -709,9 +701,7 @@ bool heInTolerance(int inferredHe, int tolerance) {
 //prints floats in a nicely formatted way so they don't jump around on the LCD screen
 void printFloat(float floatToPrint, bool highlight, int column, int row) {
   String formattedValue = String(floatToPrint, 1);
-  
   lcd.setCursor(column, row);
-  
   if (highlight) {
     lcd.write(byte(2));
   }
