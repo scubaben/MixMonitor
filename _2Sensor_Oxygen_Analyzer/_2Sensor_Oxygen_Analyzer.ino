@@ -51,7 +51,6 @@ unsigned long debounceDelay = 50;
 int displayMode = 0;
 boolean updateRightDisplay = false;
 int targetHe = 0;
-int inferredHe = 0;
 
 //use volatie variables when they get changed by an ISR (interrupt service routine)
 volatile bool aCurrentState;
@@ -239,7 +238,7 @@ boolean buttonDetect(int detectPin) {
 }
 
 float getVoltage() {
-  float batteryVoltage = analogRead(batteryPin) * 2.0 * 3.3 / 1024;
+  float batteryVoltage = analogRead(batteryPin) * 2.0 * 3.3 / 1024; //* 2.0 because a voltage divider sends only half the voltage to the batteryPin, * 3.3 (reference voltage), / # of steps
   return batteryVoltage;
 }
 
@@ -320,8 +319,6 @@ void displayRight() {
 					lcd.print("   ");
 				}
 
-				lcd.setCursor(10, 0);
-				lcd.print("  Mix ");
 				lcd.setCursor(7, 1);
 				if (sensor2.isActive()) {
 					lcd.write(byte(2));
@@ -331,20 +328,14 @@ void displayRight() {
 					lcd.print("   ");
 				}
 
+				lcd.setCursor(10, 0);
+				lcd.print("  Mix ");
+
 				printInt((int)(sensor2.oxygenContent() + 0.5), false, 11, 1);
 				lcd.print("/");
-				if (sensor1.isActive()) {
-					inferredHe = (int)((((sensor1.oxygenContent() - sensor2.oxygenContent()) / sensor1.oxygenContent()) * 100.0) + .5);
-				}
-				else {
-					inferredHe = (int)((((20.9 - sensor2.oxygenContent()) / 20.9) * 100.0) + .5);
-				}
-				if (inferredHe < 0) {
-					inferredHe = 0;
-				}
-				printInt(inferredHe, false, 14, 1);
+				printInt(calculateHe(sensor1.oxygenContent(), sensor2.oxygenContent()), false, 14, 1);
 
-				if (!sensor2.isInTolerance() || (inferredHe > targetHe + sensor2.getTolerance()) || (inferredHe < targetHe - sensor2.getTolerance())){ 
+				if (!heInTolerance(calculateHe(sensor1.oxygenContent(), sensor2.oxygenContent()), sensor1.getTolerance())){
 					digitalWrite(ledPin, HIGH);
 					digitalWrite(outPin, HIGH);
 				}
@@ -570,7 +561,7 @@ void calibrate() {
   lcd.clear();
 }
 
-//update this logic to include more validations, ie s1 can't be less than 21. also make it clearer which #s you are updating by flashing or something...
+//update this logic to include more validations, ie s1 can't be less than 21. 
 void setMixTarget() {
   lcd.setCursor(7, 0);
   lcd.print("Tgt. Mix:");
@@ -692,6 +683,27 @@ float setSensorTargets() {
   }
   displayMode = 2;
   clearRightScreen();
+}
+
+int calculateHe(float s1, float s2) {
+	int inferredHe;
+	if (!sensor1.isActive()) {
+		inferredHe = (int)(((20.9 - s2) / 20.9) * 100.0 + .5);
+	}
+	else {
+		inferredHe = (int)(((s1 - s2) / s1) * 100.0 + .5);
+	}
+	if (inferredHe < 0) {
+		inferredHe = 0;
+	}
+	return inferredHe;
+}
+
+bool heInTolerance(int inferredHe, int tolerance) {
+	if (!sensor2.isInTolerance() || (inferredHe > targetHe + sensor2.getTolerance()) || (inferredHe < targetHe - sensor2.getTolerance())) {
+		return false;
+	}
+	return true;
 }
 
 //prints floats in a nicely formatted way so they don't jump around on the LCD screen
