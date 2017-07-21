@@ -679,7 +679,7 @@ float setSensorTargets() {
 
 int calculateHe(float s1, float s2) {
 	int inferredHe;
-	(sensor1.isActive()) ? inferredHe = (int)(((s1 - s2) / s1) * 100.0 + .5 : inferredHe = (int)(((20.9 - s2) / 20.9) * 100.0 + .5);
+	(sensor1.isActive()) ? inferredHe = (int)(((s1 - s2) / s1) * 100.0 + .5) : inferredHe = (int)(((20.9 - s2) / 20.9) * 100.0 + .5);
 	return (inferredHe > 0) ? inferredHe : 0;
 }
 
