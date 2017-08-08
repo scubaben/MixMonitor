@@ -27,9 +27,11 @@
 */
 
 #include <Wire.h> // wiring library
-#include "Adafruit_ADS1015.h" //16-bit ADC library, see here: https://github.com/adafruit/Adafruit_ADS1X15
 #include <LiquidCrystal.h> //LCD library
 #include <EEPROM.h> //eeprom library for saving calibration data
+#include "Sensor.h"
+
+#define VERSION "0.3"
 
 #define buttonPin A3
 #define encoderPinA 0
@@ -39,7 +41,6 @@
 #define batteryPin A9
 
 LiquidCrystal lcd(13, 12, 11, 10, 6, 5); //create LCD object, these pins are the ones I chose to use on the adafruit feather 32u4 proto board
-Adafruit_ADS1115 ads1115;  //create ADC object
 
 int buttonState;
 int lastButtonState = HIGH;
@@ -67,109 +68,10 @@ byte arrowRight[8] = {B0, B1000, B1100, B1110, B1100, B1000, B0};
 byte arrowLeft[8] = {B0, B10, B110, B1110, B110, B10, B0};
 byte oTwo[8] = {B11, B1, B11110, B10111, B10100, B10100, B11100};
 
-class Sensor {
-    int sensorIndex;
-    int target = 209;
-	int tolerance = 15;
-    boolean calibrationLoaded = false;
-    float savedFactor = 0.0;
-
-  public:
-    Sensor(int sensorNumber) {
-      sensorIndex = sensorNumber;
-    }
-
-    boolean isConnected() {
-      if (this->mv() > 0.01) {
-        return true;
-      }
-      return false;
-    }
-
-    boolean isCalibrated() {
-      if (this->factor() > 0.0) {
-        return true;
-      }
-      return false;
-    }
-
-	boolean isActive() {
-		if (this->isCalibrated() && this->isConnected()) {
-			return true;
-		}
-		return false;
-	}
-
-    boolean isInTolerance() {
-	    float upperLimit = (float)this->target / 10.0 + (float)this->tolerance / 10.0;
-	    float lowerLimit = (float)this->target / 10.0 - (float)this->tolerance / 10.0;
-	    if(!this->isActive()){
-		    return true;
-	    }
-        if ((this->oxygenContent() > upperLimit) || (this->oxygenContent() < lowerLimit)) {
-          return false;
-        }
-        return true;
-    }
-
-    float factor() {
-	    float lowerFactorLimit = 1.615;
-	    float upperFactorLimit = 2.625;
-      int eeAddress = sensorIndex * sizeof(float);
-      if (!this->calibrationLoaded) {
-        EEPROM.get(eeAddress, this->savedFactor);
-        this->calibrationLoaded = true;
-        if (this->savedFactor < lowerFactorLimit || this->savedFactor > upperFactorLimit) {
-          this->savedFactor = 0.0;
-        }
-      }
-      return this->savedFactor;
-    }
-
-    float mv() {
-      if (sensorIndex == 0) {
-        return ads1115.readADC_Differential_0_1() * 256.0 / 32767.0; //read from ADC and convert to mv
-      }
-      if (sensorIndex == 1) {
-        return ads1115.readADC_Differential_2_3() * 256.0 / 32767.0; //read from ADC and convert to mv
-      }
-      return 0.0;
-    }
-
-    float oxygenContent() {
-      if (this->isActive() && this->mv() > 0.0) {
-        return  this->mv() * this->factor();
-      }
-      return 0.0;
-    }
-
-    void saveCalibration(float calData) {
-      int eeAddress = sensorIndex * sizeof(float);
-      EEPROM.put(eeAddress, calData);
-      this->calibrationLoaded = false; 
-    }
-
-    void setTarget(int target) {
-      this->target = target;
-    }
-
-    int getTarget() {
-      return this->target;
-    }
-
-	void setTolerance(int tolerance) {
-		this->tolerance = tolerance;
-	}
-
-	int getTolerance() {
-		return this->tolerance;
-	}
-};
-
 Sensor sensor1(0);
 Sensor sensor2(1);
-void setup() {
 
+void setup() {
   pinMode(buttonPin, INPUT_PULLUP);
   pinMode(encoderPinA, INPUT_PULLUP);
   pinMode(encoderPinB, INPUT_PULLUP);
@@ -186,16 +88,14 @@ void setup() {
   lcd.createChar(3, arrowLeft);
   lcd.createChar(4, oTwo);
 
-  ads1115.begin();  
-  ads1115.setGain(GAIN_SIXTEEN); //set gain on ADC to +/-.256v to get the best resolution on the o2 millivolts
-
   lcd.setCursor(3, 0);
   lcd.print("MixMonitor");
   lcd.setCursor(0, 1);
   lcd.print(getVoltage());
   lcd.print("v");
   lcd.setCursor(11, 1);
-  lcd.print("v 0.2");
+  lcd.print("v ");
+  lcd.print(VERSION);
   delay(2000);
   lcd.clear();
 
