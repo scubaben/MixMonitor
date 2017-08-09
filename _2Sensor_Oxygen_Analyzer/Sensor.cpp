@@ -1,4 +1,5 @@
 /*Copyright (c) 2017 Ben Shiner
+Special thanks to JJ Crawford for his technical guidance and numerous contributions
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
@@ -22,92 +23,113 @@
 #include <EEPROM.h>
 #include "Sensor.h"
 
-Sensor::Sensor(int sensorNumber) {
-  sensorIndex = sensorNumber;
-  _adc.begin();
-  _adc.setGain(GAIN_SIXTEEN);
+Sensor::Sensor(int sensorNumber, adsGain_t gain, float _lowerFactorLimit, float _upperFactorLimit) {
+	sensorIndex = sensorNumber;
+	m_gain = gain;
+	lowerFactorLimit = _lowerFactorLimit;
+	upperFactorLimit = _upperFactorLimit;
+	_adc.begin();
+	switch (gain) {
+	case GAIN_TWOTHIRDS:
+		adcRange = 6144.0;
+		break;
+	case GAIN_ONE:
+		adcRange = 4096.0;
+		break;
+	case GAIN_TWO:
+		adcRange = 2048.0;
+		break;
+	case GAIN_FOUR:
+		adcRange = 1024.0;
+		break;
+	case GAIN_EIGHT:
+		adcRange = 512.0;
+		break;
+	case GAIN_SIXTEEN:
+		adcRange = 256.0;
+		break;
+	}
 }
 
 boolean Sensor::isConnected() {
-  if (this->mv() > 0.01) return true;
+	if (this->mv() > 0.01) return true;
 
-  return false;
+	return false;
 }
 
 boolean Sensor::isCalibrated() {
-  if (this->factor() > 0.0) return true;
+	if (this->factor() > 0.0) return true;
 
-  return false;
+	return false;
 }
 
 boolean Sensor::isActive() {
-  if (this->isCalibrated() && this->isConnected()) return true;
+	if (this->isCalibrated() && this->isConnected()) return true;
 
-  return false;
+	return false;
 }
 
 boolean Sensor::isInTolerance() {
-  float upperLimit = (float)this->target / 10.0 + (float)this->tolerance / 10.0;
-  float lowerLimit = (float)this->target / 10.0 - (float)this->tolerance / 10.0;
+	float upperLimit = (float)this->target / 10.0 + (float)this->tolerance / 10.0;
+	float lowerLimit = (float)this->target / 10.0 - (float)this->tolerance / 10.0;
 
-  if (!this->isActive()) return true;
+	if (!this->isActive()) return true;
 
-  if ((this->oxygenContent() > upperLimit) || (this->oxygenContent() < lowerLimit)) return false;
+	if ((this->oxygenContent() > upperLimit) || (this->oxygenContent() < lowerLimit)) return false;
 
-  return true;
+	return true;
 }
 
 float Sensor::factor() {
-  float lowerFactorLimit = 1.615;
-  float upperFactorLimit = 2.625;
-  int eeAddress = sensorIndex * sizeof(float);
-  if (!this->calibrationLoaded) {
-    EEPROM.get(eeAddress, this->savedFactor);
-    this->calibrationLoaded = true;
-    if (this->savedFactor < lowerFactorLimit || this->savedFactor > upperFactorLimit) {
-      this->savedFactor = 0.0;
-    }
-  }
-  return this->savedFactor;
+	int eeAddress = sensorIndex * sizeof(float);
+	if (!this->calibrationLoaded) {
+		EEPROM.get(eeAddress, this->savedFactor);
+		this->calibrationLoaded = true;
+		if (this->savedFactor < this->lowerFactorLimit || this->savedFactor > this->upperFactorLimit) {
+			this->savedFactor = 0.0;
+		}
+	}
+	return this->savedFactor;
 }
 
 float Sensor::mv() {
-  if (sensorIndex == 0) {
-    return _adc.readADC_Differential_0_1() * 256.0 / 32767.0; //read from ADC and convert to mv
-  }
-  if (sensorIndex == 1) {
-    return _adc.readADC_Differential_2_3() * 256.0 / 32767.0; //read from ADC and convert to mv
-  }
-  return 0.0;
+	_adc.setGain(m_gain);
+	if (sensorIndex == 0) {
+		return _adc.readADC_Differential_0_1() * adcRange / 32767.0; //read from ADC and convert to mv
+	}
+	if (sensorIndex == 1) {
+		return _adc.readADC_Differential_2_3() * adcRange / 32767.0; //read from ADC and convert to mv
+	}
+	return 0.0;
 }
 
 float Sensor::oxygenContent() {
-  if (this->isActive() && this->mv() > 0.0) {
-    return  this->mv() * this->factor();
-  }
-  return 0.0;
+	if (this->isActive() && this->mv() > 0.0) {
+		return  this->mv() * this->factor();
+	}
+	return 0.0;
 }
 
 void Sensor::saveCalibration(float calData) {
-  int eeAddress = sensorIndex * sizeof(float);
-  EEPROM.put(eeAddress, calData);
-  this->calibrationLoaded = false;
+	int eeAddress = sensorIndex * sizeof(float);
+	EEPROM.put(eeAddress, calData);
+	this->calibrationLoaded = false;
 }
 
 void Sensor::setTarget(int target) {
-  this->target = target;
+	this->target = target;
 }
 
 int Sensor::getTarget() {
-  return this->target;
+	return this->target;
 }
 
 void Sensor::setTolerance(int tolerance) {
-  this->tolerance = tolerance;
+	this->tolerance = tolerance;
 }
 
 int Sensor::getTolerance() {
-  return this->tolerance;
+	return this->tolerance;
 }
 
 

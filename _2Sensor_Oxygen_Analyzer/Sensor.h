@@ -1,4 +1,5 @@
 /*Copyright (c) 2017 Ben Shiner
+Special thanks to JJ Crawford for his technical guidance and numerous contributions
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
@@ -22,27 +23,31 @@
 #include <Adafruit_ADS1015.h>
 
 class Sensor {
-  protected:
-    int sensorIndex;
-    int target = 209;
-    int tolerance = 15;
-    boolean calibrationLoaded = false;
-    float savedFactor = 0.0;
-    Adafruit_ADS1115 _adc;
+protected:
+	int sensorIndex;
+	adsGain_t m_gain;
+	float lowerFactorLimit;
+	float upperFactorLimit;
+	int target = 209;
+	int tolerance = 15;
+	boolean calibrationLoaded = false;
+	float savedFactor = 0.0;
+	float adcRange;
+	Adafruit_ADS1115 _adc;
 
-  public:
-    Sensor() {};
-    Sensor(int);
-    bool isConnected();
-    bool isCalibrated();
-    bool isActive();
-    bool isInTolerance();
-    float factor();
-    float mv();
-    float oxygenContent();
-    void saveCalibration(float);
-    void setTarget(int);
-    int getTarget();
-    void setTolerance(int);
-    int getTolerance();
+public:
+	Sensor() {};
+	Sensor(int, adsGain_t, float, float);
+	bool isConnected();
+	bool isCalibrated();
+	bool isActive();
+	bool isInTolerance();
+	float factor();
+	float mv();
+	float oxygenContent();
+	void saveCalibration(float);
+	void setTarget(int);
+	int getTarget();
+	void setTolerance(int);
+	int getTolerance();
 };

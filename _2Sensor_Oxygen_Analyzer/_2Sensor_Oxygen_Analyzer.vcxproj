@@ -84,7 +84,13 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Sensor.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
     <ClInclude Include="__vm\._2Sensor_Oxygen_Analyzer.vsarduino.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Sensor.cpp" />
   </ItemGroup>
   <PropertyGroup>
     <DebuggerFlavor>VisualMicroDebugger</DebuggerFlavor>
