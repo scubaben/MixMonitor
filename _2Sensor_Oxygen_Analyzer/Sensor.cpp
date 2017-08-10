@@ -23,30 +23,22 @@ Special thanks to JJ Crawford for his technical guidance and numerous contributi
 #include <EEPROM.h>
 #include "Sensor.h"
 
-Sensor::Sensor(int sensorNumber, adsGain_t gain, float _lowerFactorLimit, float _upperFactorLimit) {
+Sensor::Sensor(int sensorNumber, sensorType_t sensorType) {
 	sensorIndex = sensorNumber;
-	m_gain = gain;
-	lowerFactorLimit = _lowerFactorLimit;
-	upperFactorLimit = _upperFactorLimit;
+	m_sensorType = sensorType;
 	_adc.begin();
-	switch (gain) {
-	case GAIN_TWOTHIRDS:
-		adcRange = 6144.0;
-		break;
-	case GAIN_ONE:
-		adcRange = 4096.0;
-		break;
-	case GAIN_TWO:
-		adcRange = 2048.0;
-		break;
-	case GAIN_FOUR:
-		adcRange = 1024.0;
-		break;
-	case GAIN_EIGHT:
-		adcRange = 512.0;
-		break;
-	case GAIN_SIXTEEN:
+	switch (sensorType) {
+	case OXYGEN:
+		lowerFactorLimit = 1.615;
+		upperFactorLimit = 2.625;
+		m_gain = GAIN_SIXTEEN;
 		adcRange = 256.0;
+		break;
+	case HELIUM:
+		lowerFactorLimit = 0.01; //need to update these values to appropriate values for the pellistor
+		upperFactorLimit = 1.0;  //need to update these values to appropriate values for the pellistor
+		m_gain = GAIN_FOUR;
+		adcRange = 1024.0;
 		break;
 	}
 }
@@ -75,13 +67,13 @@ boolean Sensor::isInTolerance() {
 
 	if (!this->isActive()) return true;
 
-	if ((this->oxygenContent() > upperLimit) || (this->oxygenContent() < lowerLimit)) return false;
+	if ((this->gasContent() > upperLimit) || (this->gasContent() < lowerLimit)) return false;
 
 	return true;
 }
 
 float Sensor::factor() {
-	int eeAddress = sensorIndex * sizeof(float);
+	int eeAddress = sensorIndex * sizeof(float) * 2;
 	if (!this->calibrationLoaded) {
 		EEPROM.get(eeAddress, this->savedFactor);
 		this->calibrationLoaded = true;
@@ -90,6 +82,17 @@ float Sensor::factor() {
 		}
 	}
 	return this->savedFactor;
+}
+
+float Sensor::offset() {
+	int eeAddress = sensorIndex * sizeof(float) * 2 + sizeof(float);
+	if (m_sensorType == HELIUM) {
+		EEPROM.get(eeAddress, this->savedOffset);
+	}
+	else {
+		this->savedOffset = 0.0;
+	}
+	return this->savedOffset;
 }
 
 float Sensor::mv() {
@@ -103,16 +106,24 @@ float Sensor::mv() {
 	return 0.0;
 }
 
-float Sensor::oxygenContent() {
+float Sensor::gasContent() {
 	if (this->isActive() && this->mv() > 0.0) {
-		return  this->mv() * this->factor();
+		return  (this->mv() - this->offset()) * this->factor();
 	}
 	return 0.0;
 }
 
 void Sensor::saveCalibration(float calData) {
-	int eeAddress = sensorIndex * sizeof(float);
+	int eeAddress = sensorIndex * sizeof(float) * 2;
 	EEPROM.put(eeAddress, calData);
+	this->calibrationLoaded = false;
+}
+
+void Sensor::saveCalibration(float calData, float calOffset) {
+	int eeAddress = sensorIndex * sizeof(float) * 2;
+	EEPROM.put(eeAddress, calData);
+	eeAddress = eeAddress + sizeof(float);
+	EEPROM.put(eeAddress, calOffset);
 	this->calibrationLoaded = false;
 }
 

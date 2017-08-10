@@ -62,8 +62,8 @@ byte arrowRight[8] = { B0, B1000, B1100, B1110, B1100, B1000, B0 };
 byte arrowLeft[8] = { B0, B10, B110, B1110, B110, B10, B0 };
 byte oTwo[8] = { B11, B1, B11110, B10111, B10100, B10100, B11100 };
 
-Sensor sensor1(0, GAIN_SIXTEEN, 1.615, 2.625);
-Sensor sensor2(1, GAIN_SIXTEEN, 1.615, 2.625);
+Sensor sensor1(0, OXYGEN);
+Sensor sensor2(1, OXYGEN);
 
 void setup() {
 	pinMode(buttonPin, INPUT_PULLUP);
@@ -138,8 +138,8 @@ float getVoltage() {
 
 void displayOxygen() {
 	if ((millis() - lastSampleMillis) > sampleRate) {
-		if (sensor1.oxygenContent() > 0.1) {
-			printFloat(sensor1.oxygenContent(), false, 0, 0);
+		if (sensor1.gasContent() > 0.1) {
+			printFloat(sensor1.gasContent(), false, 0, 0);
 			lcd.print("%");
 		}
 		else if (displayMode == 1) {
@@ -151,8 +151,8 @@ void displayOxygen() {
 			lcd.print("     ");
 		}
 
-		if (sensor2.oxygenContent() > 0.1) {
-			printFloat(sensor2.oxygenContent(), false, 0, 1);
+		if (sensor2.gasContent() > 0.1) {
+			printFloat(sensor2.gasContent(), false, 0, 1);
 			lcd.print("%");
 		}
 		else {
@@ -217,11 +217,11 @@ void displayRight() {
 				printInt((sensor2.getTarget() / 10), false, 8, 1);
 				lcd.setCursor(10, 0);
 				lcd.print("  Mix ");
-				printInt((int)(sensor2.oxygenContent() + 0.5), false, 11, 1);
+				printInt((int)(sensor2.gasContent() + 0.5), false, 11, 1);
 				lcd.print("/");
-				printInt(calculateHe(sensor1.oxygenContent(), sensor2.oxygenContent()), false, 14, 1);
+				printInt(calculateHe(sensor1.gasContent(), sensor2.gasContent()), false, 14, 1);
 
-				if (!heInTolerance(calculateHe(sensor1.oxygenContent(), sensor2.oxygenContent()), sensor1.getTolerance())) {
+				if (!heInTolerance(calculateHe(sensor1.gasContent(), sensor2.gasContent()), sensor1.getTolerance())) {
 					digitalWrite(ledPin, HIGH);
 					digitalWrite(outPin, HIGH);
 				}
