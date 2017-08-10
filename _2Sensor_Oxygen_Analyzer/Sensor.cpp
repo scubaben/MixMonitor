@@ -143,4 +143,7 @@ int Sensor::getTolerance() {
 	return this->tolerance;
 }
 
+sensorType_t Sensor::getSensorType() {
+	return this->m_sensorType;
+}
 

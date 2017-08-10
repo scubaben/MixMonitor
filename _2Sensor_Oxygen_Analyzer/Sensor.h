@@ -59,4 +59,5 @@ public:
 	int getTarget();
 	void setTolerance(int);
 	int getTolerance();
+	sensorType_t getSensorType();
 };
