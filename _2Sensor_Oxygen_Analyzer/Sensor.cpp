@@ -127,6 +127,13 @@ void Sensor::saveCalibration(float calData, float calOffset) {
 	this->calibrationLoaded = false;
 }
 
+bool Sensor::validateCalibration(float calibrationPoint) {
+	if (calibrationPoint / this->mv() > lowerFactorLimit && calibrationPoint / this->mv() < upperFactorLimit) {
+		return true;
+	}
+	return false;
+}
+
 void Sensor::setTarget(int target) {
 	this->target = target;
 }

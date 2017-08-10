@@ -49,6 +49,7 @@ public:
 	bool isCalibrated();
 	bool isActive();
 	bool isInTolerance();
+	bool validateCalibration(float);
 	float factor();
 	float offset();
 	float mv();
