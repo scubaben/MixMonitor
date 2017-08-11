@@ -24,21 +24,21 @@ Special thanks to JJ Crawford for his technical guidance and numerous contributi
 #include "Sensor.h"
 
 Sensor::Sensor(int sensorNumber, sensorType_t sensorType) {
-	sensorIndex = sensorNumber;
-	m_sensorType = sensorType;
+	this->sensorIndex = sensorNumber;
+	this->m_sensorType = sensorType;
 	_adc.begin();
 	switch (sensorType) {
 	case OXYGEN:
-		lowerFactorLimit = 1.615;
-		upperFactorLimit = 2.625;
-		m_gain = GAIN_SIXTEEN;
-		adcRange = 256.0;
+		this->lowerFactorLimit = 1.615;
+		this->upperFactorLimit = 2.625;
+		this->m_gain = GAIN_SIXTEEN;
+		this->adcRange = 256.0;
 		break;
 	case HELIUM:
-		lowerFactorLimit = 0.01; //need to update these values to appropriate values for the pellistor
-		upperFactorLimit = 1.0;  //need to update these values to appropriate values for the pellistor
-		m_gain = GAIN_FOUR;
-		adcRange = 1024.0;
+		this->lowerFactorLimit = 0.01; //need to update these values to appropriate values for the pellistor
+		this->upperFactorLimit = 1.0;  //need to update these values to appropriate values for the pellistor
+		this->m_gain = GAIN_FOUR;
+		this->adcRange = 1024.0;
 		break;
 	}
 }
@@ -96,7 +96,7 @@ float Sensor::offset() {
 }
 
 float Sensor::mv() {
-	_adc.setGain(m_gain);
+	_adc.setGain(this->m_gain);
 	if (sensorIndex == 0) {
 		return _adc.readADC_Differential_0_1() * adcRange / 32767.0; //read from ADC and convert to mv
 	}
