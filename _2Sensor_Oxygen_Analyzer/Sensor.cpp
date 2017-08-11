@@ -128,7 +128,7 @@ void Sensor::saveCalibration(float calData, float calOffset) {
 }
 
 bool Sensor::validateCalibration(float calibrationPoint) {
-	if (calibrationPoint / this->mv() > lowerFactorLimit && calibrationPoint / this->mv() < upperFactorLimit) {
+	if (calibrationPoint / this->mv() > this->lowerFactorLimit && calibrationPoint / this->mv() < this->upperFactorLimit) {
 		return true;
 	}
 	return false;

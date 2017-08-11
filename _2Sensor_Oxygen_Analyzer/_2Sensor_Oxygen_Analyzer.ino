@@ -402,7 +402,7 @@ void calibrate() {
 
 	} while (!buttonDetect(buttonPin));
 
-	if (sensor1.isConnected() && ((calibrationPoint / sensor1.mv() > 1.615 && calibrationPoint / sensor1.mv() < 2.625))) {
+	if (sensor1.isConnected() && sensor1.validateCalibration(calibrationPoint)) {
 		sensor1.saveCalibration(calibrationPoint / sensor1.mv());
 	}
 	else if (!sensor1.isConnected()) {
@@ -416,7 +416,7 @@ void calibrate() {
 		delay(3000);
 		calibrate();
 	}
-	if (sensor2.isConnected() && ((calibrationPoint / sensor2.mv() > 1.615 && calibrationPoint / sensor2.mv() < 2.625))) {
+	if (sensor2.isConnected() && sensor2.validateCalibration(calibrationPoint)) {
 		sensor2.saveCalibration(calibrationPoint / sensor2.mv());
 	}
 	else if (!sensor2.isConnected()) {
