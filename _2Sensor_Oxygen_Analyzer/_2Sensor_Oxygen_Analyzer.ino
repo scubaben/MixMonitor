@@ -401,9 +401,10 @@ void calibrate() {
 		lcd.print("mV");
 
 	} while (!buttonDetect(buttonPin));
+	calibrationPoint = calibrationPoint / 100.0;
 
 	if (sensor1.isConnected() && sensor1.validateCalibration(calibrationPoint)) {
-		sensor1.saveCalibration(calibrationPoint / sensor1.mv());
+		sensor1.saveCalibration(sensor1.mv() / calibrationPoint);
 	}
 	else if (!sensor1.isConnected()) {
 		sensor1.saveCalibration(0.0);
@@ -417,7 +418,7 @@ void calibrate() {
 		calibrate();
 	}
 	if (sensor2.isConnected() && sensor2.validateCalibration(calibrationPoint)) {
-		sensor2.saveCalibration(calibrationPoint / sensor2.mv());
+		sensor2.saveCalibration(sensor2.mv() / calibrationPoint);
 	}
 	else if (!sensor2.isConnected()) {
 		sensor2.saveCalibration(0.0);

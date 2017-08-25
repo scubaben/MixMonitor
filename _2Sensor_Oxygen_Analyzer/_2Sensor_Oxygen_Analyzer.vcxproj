@@ -11,7 +11,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{C5F80730-F44F-4478-BDAE-6634EFC2CA88}</ProjectGuid>
+    <ProjectGuid>{4326EE7E-8EE7-47E1-BD27-FC712FA101FE}</ProjectGuid>
     <RootNamespace>
     </RootNamespace>
     <ProjectName>_2Sensor_Oxygen_Analyzer</ProjectName>

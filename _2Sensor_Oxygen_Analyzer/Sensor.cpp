@@ -29,14 +29,14 @@ Sensor::Sensor(int sensorNumber, sensorType_t sensorType) {
 	_adc.begin();
 	switch (sensorType) {
 	case OXYGEN:
-		this->lowerFactorLimit = 1.615;
-		this->upperFactorLimit = 2.625;
+		this->lowerFactorLimit = 38.09;
+		this->upperFactorLimit = 61.90;
 		this->m_gain = GAIN_SIXTEEN;
 		this->adcRange = 256.0;
 		break;
 	case HELIUM:
-		this->lowerFactorLimit = 0.01; //need to update these values to appropriate values for the pellistor
-		this->upperFactorLimit = 1.0;  //need to update these values to appropriate values for the pellistor
+		this->lowerFactorLimit = 0.1; //need to update these values to appropriate values for the pellistor
+		this->upperFactorLimit = 700.0;  //need to update these values to appropriate values for the pellistor
 		this->m_gain = GAIN_FOUR;
 		this->adcRange = 1024.0;
 		break;
@@ -108,7 +108,7 @@ float Sensor::mv() {
 
 float Sensor::gasContent() {
 	if (this->isActive() && this->mv() > 0.0) {
-		return  (this->mv() - this->offset()) * this->factor();
+		return  (this->mv() - this->offset()) / this->factor() * 100.0;
 	}
 	return 0.0;
 }
@@ -128,7 +128,7 @@ void Sensor::saveCalibration(float calData, float calOffset) {
 }
 
 bool Sensor::validateCalibration(float calibrationPoint) {
-	if (calibrationPoint / this->mv() > this->lowerFactorLimit && calibrationPoint / this->mv() < this->upperFactorLimit) {
+	if (this->mv() / calibrationPoint > this->lowerFactorLimit && this->mv() /calibrationPoint < this->upperFactorLimit) {
 		return true;
 	}
 	return false;
