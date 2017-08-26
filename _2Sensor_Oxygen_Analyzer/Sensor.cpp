@@ -39,18 +39,19 @@ Sensor::Sensor(int sensorNumber, sensorType_t sensorType) {
 		this->upperFactorLimit = 700.0;  //need to update these values to appropriate values for the pellistor
 		this->m_gain = GAIN_FOUR;
 		this->adcRange = 1024.0;
+		this->calibrationLoaded = true;
 		break;
 	}
 }
 
 boolean Sensor::isConnected() {
-	if (this->mv() > 0.01) return true;
+	if (this->mv() > 0.01 || m_sensorType == HELIUM) return true;
 
 	return false;
 }
 
 boolean Sensor::isCalibrated() {
-	if (this->factor() > 0.0) return true;
+	if (this->factor() > 0.0 || m_sensorType == HELIUM) return true;
 
 	return false;
 }
@@ -105,10 +106,16 @@ float Sensor::mv() {
 	}
 	return 0.0;
 }
-
+ 
 float Sensor::gasContent() {
-	if (this->isActive() && this->mv() > 0.0) {
-		return  (this->mv() - this->offset()) / this->factor() * 100.0;
+
+	if (m_sensorType == OXYGEN) {
+		if (m_sensorType == OXYGEN && this->isActive()) {
+			return  this->mv() / this->factor() * 100.0;
+		}
+	}
+	else if (m_sensorType == HELIUM) {
+		return 0.4098995 + 0.121167*this->mv() + 0.00004743155*sq(this->mv()); //curve fitting based on a vq31mb zero'd in air
 	}
 	return 0.0;
 }
@@ -128,7 +135,10 @@ void Sensor::saveCalibration(float calData, float calOffset) {
 }
 
 bool Sensor::validateCalibration(float calibrationPoint) {
-	if (this->mv() / calibrationPoint > this->lowerFactorLimit && this->mv() /calibrationPoint < this->upperFactorLimit) {
+	if (m_sensorType == HELIUM) {
+		return true;
+	}
+	else if (this->mv() / calibrationPoint > this->lowerFactorLimit && this->mv() / calibrationPoint < this->upperFactorLimit) {
 		return true;
 	}
 	return false;
