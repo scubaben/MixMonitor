@@ -115,7 +115,23 @@ float Sensor::gasContent() {
 		}
 	}
 	else if (m_sensorType == HELIUM) {
-		return 0.4098995 + 0.121167*this->mv() + 0.00004743155*sq(this->mv()); //curve fitting based on a vq31mb zero'd in air
+		float adjustedMv = this->mv();
+		return 0.2485473 + 0.1184121*adjustedMv + 0.00004771562*sq(adjustedMv); //curve fitting based on a vq31mb zero'd (.2mV) in air
+	}
+	return 0.0;
+}
+
+float Sensor::gasContent(float oxygenContent) {
+
+	if (m_sensorType == OXYGEN) {
+		if (m_sensorType == OXYGEN && this->isActive()) {
+			return  this->mv() / this->factor() * 100.0;
+		}
+	}
+	else if (m_sensorType == HELIUM) {
+		float adjustedMv = this->mv();
+		adjustedMv -= (oxygenContent - 21.0) *0.39240506; //adjust mv for oxygen contents different than air
+		return 0.2485473 + 0.1184121*adjustedMv + 0.00004771562*sq(adjustedMv); //curve fitting based on a vq31mb zero'd (.2mV) in air
 	}
 	return 0.0;
 }
@@ -123,14 +139,6 @@ float Sensor::gasContent() {
 void Sensor::saveCalibration(float calData) {
 	int eeAddress = sensorIndex * sizeof(float) * 2;
 	EEPROM.put(eeAddress, calData);
-	this->calibrationLoaded = false;
-}
-
-void Sensor::saveCalibration(float calData, float calOffset) {
-	int eeAddress = sensorIndex * sizeof(float) * 2;
-	EEPROM.put(eeAddress, calData);
-	eeAddress = eeAddress + sizeof(float);
-	EEPROM.put(eeAddress, calOffset);
 	this->calibrationLoaded = false;
 }
 

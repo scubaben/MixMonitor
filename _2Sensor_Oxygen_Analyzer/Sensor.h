@@ -54,8 +54,8 @@ public:
 	float offset();
 	float mv();
 	float gasContent();
+	float gasContent(float);
 	void saveCalibration(float);
-	void saveCalibration(float, float);
 	void setTarget(int);
 	int getTarget();
 	void setTolerance(int);
