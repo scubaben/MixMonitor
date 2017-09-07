@@ -106,7 +106,7 @@ float Sensor::mv() {
 	}
 	return 0.0;
 }
- 
+
 float Sensor::gasContent() {
 
 	if (m_sensorType == OXYGEN) {
@@ -115,23 +115,31 @@ float Sensor::gasContent() {
 		}
 	}
 	else if (m_sensorType == HELIUM) {
+		//these constants are for the helium calculation equation without correcting for o2 content.  these values are still being fine tuned.
+		const float a = 0.2485473;
+		const float b = 0.1184121;
+		const float c = 0.00004771562;
+
 		float adjustedMv = this->mv();
-		return 0.2485473 + 0.1184121*adjustedMv + 0.00004771562*sq(adjustedMv); //curve fitting based on a vq31mb zero'd (.2mV) in air
+		//quadratic curve equation: y = a + bx + cx^2 where y is helium and x is mv
+		return a + b*adjustedMv + c*sq(adjustedMv); //curve fitting based on a vq31mb zero'd (.2mV) in air
 	}
 	return 0.0;
 }
 
+//this version of the gasContent function is still undegoing testing
 float Sensor::gasContent(float oxygenContent) {
 
-	if (m_sensorType == OXYGEN) {
-		if (m_sensorType == OXYGEN && this->isActive()) {
-			return  this->mv() / this->factor() * 100.0;
-		}
-	}
-	else if (m_sensorType == HELIUM) {
+	if (m_sensorType == HELIUM) {
+		//these constants are for the helium calculation equation with a correction for o2 content. these values are still being fine tuned.
+		const float a = 0.04202149;
+		const float b = 0.1160009;
+		const float c = 0.00005523657;
+		const float o2AdjustmentFactor = 0.39240506;  // represents the mV per % of o2 that is added or subtracted for difference from air.
+
 		float adjustedMv = this->mv();
-		adjustedMv -= (oxygenContent - 21.0) *0.39240506; //adjust mv for oxygen contents different than air
-		return 0.2485473 + 0.1184121*adjustedMv + 0.00004771562*sq(adjustedMv); //curve fitting based on a vq31mb zero'd (.2mV) in air
+		adjustedMv -= (oxygenContent - 21.0) * o2AdjustmentFactor; //adjust mv for oxygen contents different than air
+		return a + b*adjustedMv + c*sq(adjustedMv); //curve fitting based on a vq31mb zero'd (.2mV) in air AND the effect of oxygen on thermal conductivity
 	}
 	return 0.0;
 }
