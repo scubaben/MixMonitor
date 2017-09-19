@@ -85,4 +85,3 @@ You'll also need some miscellaneous items like: hookup wire, a fine-tip solderin
 |1/4" 2-56 Screws (25-pack)|1955|Pololu.com|1|$0.99|
 
 ##### Please see the license for permissions and limitations of the use of this software.
-*Note: I'm trying out visual micro as an IDE and it has added a bunch of extra files, if you are using the arduino IDE you just need the .ino file.*
