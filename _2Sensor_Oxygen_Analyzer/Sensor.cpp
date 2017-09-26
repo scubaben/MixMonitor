@@ -116,30 +116,32 @@ float Sensor::gasContent() {
 	}
 	else if (m_sensorType == HELIUM) {
 		//these constants are for the helium calculation equation without correcting for o2 content.  these values are still being fine tuned.
-		const float a = 0.2485473;
-		const float b = 0.1184121;
-		const float c = 0.00004771562;
+		const float a = -0.522067;
+		const float b = 0.134723;
+		const float c = -0.00002943842;
+		const float d = 0.00000008343704;
 
 		float adjustedMv = this->mv();
-		//quadratic curve equation: y = a + bx + cx^2 where y is helium and x is mv
-		return a + b*adjustedMv + c*sq(adjustedMv); //curve fitting based on a vq31mb zero'd (.2mV) in air
+		//quadratic curve equation: y = a + bx + cx^2 + dx^3 where y is helium and x is mv
+		return a + b*adjustedMv + c*sq(adjustedMv) + d*pow(adjustedMv, 3.0); //curve fitting based on a vq31mb at 3.8 mV in air
 	}
 	return 0.0;
 }
 
-//this version of the gasContent function is still undegoing testing
+//this version of the gasContent function uses a linear correction for oxygen content (could probably be fine-tuned further with a curve-fit)
 float Sensor::gasContent(float oxygenContent) {
 
 	if (m_sensorType == HELIUM) {
 		//these constants are for the helium calculation equation with a correction for o2 content. these values are still being fine tuned.
-		const float a = 0.04202149;
-		const float b = 0.1160009;
-		const float c = 0.00005523657;
-		const float o2AdjustmentFactor = 0.39240506;  // represents the mV per % of o2 that is added or subtracted for difference from air.
+		const float a = -0.5230907;
+		const float b = 0.133519;
+		const float c = -0.00002558331;
+		const float d = 0.00000007478976;
+		const float o2AdjustmentFactor = 0.3906447535;  // represents the mV per % of o2 that is added or subtracted for difference from air.
 
 		float adjustedMv = this->mv();
-		adjustedMv -= (oxygenContent - 21.0) * o2AdjustmentFactor; //adjust mv for oxygen contents different than air
-		return a + b*adjustedMv + c*sq(adjustedMv); //curve fitting based on a vq31mb zero'd (.2mV) in air AND the effect of oxygen on thermal conductivity
+		adjustedMv -= (oxygenContent - 20.9) * o2AdjustmentFactor; //adjust mv for oxygen contents different than air
+		return a + b*adjustedMv + c*sq(adjustedMv) + d*pow(adjustedMv, 3.0); //curve fitting based on a vq31mb at 3.8mV in air AND the effect of oxygen on thermal conductivity
 	}
 	return 0.0;
 }
