@@ -107,6 +107,7 @@ float Sensor::mv() {
 	return 0.0;
 }
 
+//this version of the gasContent function caculates oxygen content, and uses a quadratic curve fit to do a simple calculation for helium content (without correcting for oxygen content)
 float Sensor::gasContent() {
 
 	if (m_sensorType == OXYGEN) {
@@ -115,7 +116,6 @@ float Sensor::gasContent() {
 		}
 	}
 	else if (m_sensorType == HELIUM) {
-		//these constants are for the helium calculation equation without correcting for o2 content.  these values are still being fine tuned.
 		const float a = -0.522067;
 		const float b = 0.134723;
 		const float c = -0.00002943842;
@@ -128,20 +128,25 @@ float Sensor::gasContent() {
 	return 0.0;
 }
 
-//this version of the gasContent function uses a linear correction for oxygen content (could probably be fine-tuned further with a curve-fit)
+//this version of the gasContent function uses a 3-dimensional curve fit to account for the non-linear response in varying oxygen and helium mixes. thanks to zunzun.com for their excellent curve fitting app
 float Sensor::gasContent(float oxygenContent) {
 
 	if (m_sensorType == HELIUM) {
-		//these constants are for the helium calculation equation with a correction for o2 content. these values are still being fine tuned.
-		const float a = -0.5230907;
-		const float b = 0.133519;
-		const float c = -0.00002558331;
-		const float d = 0.00000007478976;
-		const float o2AdjustmentFactor = 0.3906447535;  // represents the mV per % of o2 that is added or subtracted for difference from air.
-
-		float adjustedMv = this->mv();
-		adjustedMv -= (oxygenContent - 20.9) * o2AdjustmentFactor; //adjust mv for oxygen contents different than air
-		return a + b*adjustedMv + c*sq(adjustedMv) + d*pow(adjustedMv, 3.0); //curve fitting based on a vq31mb at 3.8mV in air AND the effect of oxygen on thermal conductivity
+		double heContent;
+		heContent = 0.0;
+		double a = 1.4610559504218952E0;
+		double b = 1.0993977915597843E-1;
+		double c = 5.5707457038157646E-5;
+		double d = -6.6547586823996904E-2;
+		double f = 5.9370452670676590E-4;
+		double g = -1.4752241260518328E-6;
+		heContent += a;
+		heContent += b * this->mv();
+		heContent += c * pow(this->mv(), 2.0);
+		heContent += d * oxygenContent;
+		heContent += f * oxygenContent * this->mv();
+		heContent += g * oxygenContent * pow(this->mv(), 2.0);
+		return heContent;
 	}
 	return 0.0;
 }
