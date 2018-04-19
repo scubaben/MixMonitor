@@ -11,7 +11,7 @@ The left side of the screen will always display the readings from any connected 
 *NOTE: This type of analysis is not a substitute to analyzing what actually ends up in your tanks, and you must analyze your gas after you have filled.*
 
 ## Setup
-This analyzer is designed to be connected to two sensors on a nitrox / trimix blending stick.  Your stick should be setup to inject oxygen first, followed by sensor 1, then inject helium followed by sensor two, like so:
+This analyzer is designed to be connected to two sensors on a nitrox / trimix blending stick.  Your stick should be setup with the oxygen injection furthest from the compressor inlet, followed by sensor 1, then helium injection finally followed by sensor two just before the compressor inlet, like so:
 
 Fresh Air Intake -> Oxygen Injection -> Sensor 1 (S1) -> Helium Injection -> Sensor 2 (S2) -> Compressor Inlet
 
