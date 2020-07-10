@@ -85,8 +85,8 @@ When using Mix Target or Sensor Target Modes you will specify a tolerance. The a
 | Mono Jacks         | 502-35RAPC2AV        | Mouser | 3   | \$1.51     |
 | Rotary Encoder     | 652-PEC11R-4215F-S24 | Mouser | 1   | \$1.63     |
 | Knob               | 450-BA600            | Mouser | 1   | \$1.14     |
-| ADC Breakout       | 485-1085             | Mouser | 1   | 14.95      |
-| 3.3v LCD           | 332114998562         | eBay   | 1   | \$6.55     |
+| ADC Breakout       | 485-1085             | Mouser | 1   | \$14.95    |
+| 16x2 3.3v LCD      | LCD-09052            | Mouser | 1   | \$17.95    |
 | Feather 32u4 Proto | 485-2771             | Mouser | 1   | \$19.95    |
 | Battery            | 485-2011             | Mouser | 1   | \$12.50    |
 | Molex Connector    | 538-22-01-3037       | Mouser | 3   | \$0.19     |
